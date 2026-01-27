@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="nl">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Korting calculator</title>
+  <title>Discount Calculator</title>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 24px; max-width: 980px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
@@ -18,20 +18,13 @@
     table { width: 100%; border-collapse: collapse; margin-top: 12px; }
     th, td { text-align: right; padding: 8px; border-bottom: 1px solid #eee; }
     th:first-child, td:first-child { text-align: left; }
-    th:nth-child(2), td:nth-child(2),
-    th:nth-child(3), td:nth-child(3),
-    th:nth-child(4), td:nth-child(4) { text-align: right; }
     .row { display:flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed #eee; }
     .row:last-child { border-bottom: 0; }
     .toast { margin-top: 10px; font-size: 13px; color:#0b6; }
   </style>
 </head>
 <body>
-  <h1>Korting calculator</h1>
-  <p class="muted">
-    Input: Product, List prijs, Quantity (licenties), Duration (Years), gewenste TCV totaal.
-    Rekent base korting = 1 - (TCV / list totaal) en verdeelt: jaar 1 = base + 5pp, laatste jaar = base - 5pp.
-  </p>
+  <h1>Discount Calculator</h1>
 
   <div class="card">
     <div class="grid">
@@ -39,24 +32,26 @@
         <label>Product</label>
         <input id="product" type="text" value="SOS 300" />
       </div>
+
       <div>
-        <label>List prijs per licentie per jaar (€)</label>
-        <input id="listPrice" type="number" step="0.01" value="445" />
+        <label>List Price per License per Year (€)</label>
+        <input id="listPrice" type="text" inputmode="decimal" placeholder="e.g. 445,00" value="445,00" />
       </div>
 
       <div>
-        <label>Quantity (aantal licenties)</label>
+        <label>Quantity</label>
         <input id="quantity" type="number" step="1" value="10" />
       </div>
+
       <div>
         <label>Duration (Years)</label>
         <input id="years" type="number" step="1" value="1" />
       </div>
 
       <div style="grid-column:1 / -1;">
-        <label>Gewenste TCV totaal (na korting) (€)</label>
-        <input id="tcv" type="number" step="0.01" value="3690" />
-        <div class="muted">TCV is het totaalbedrag over alle jaren samen (na korting).</div>
+        <label>Target TCV Total (After Discount) (€)</label>
+        <input id="tcv" type="text" inputmode="decimal" placeholder="e.g. 1.660,50" value="3.690,00" />
+        <div class="muted">European formatting supported (e.g. 1.660,50).</div>
       </div>
     </div>
 
@@ -64,7 +59,7 @@
       <button id="btnCopy">Copy link</button>
       <button id="btnReset">Reset</button>
       <button id="btnCSV">Download Excel (CSV)</button>
-      <button id="btnXLSX" title="Maakt een echte .xlsx (gebruikt externe library).">Download Excel (XLSX)</button>
+      <button id="btnXLSX" title="Creates a real .xlsx (uses an external library).">Download Excel (XLSX)</button>
     </div>
 
     <div id="toast" class="toast" style="display:none;"></div>
@@ -72,7 +67,7 @@
 
   <div id="out" class="card"></div>
 
-  <!-- Optioneel voor XLSX export (werkt alleen als internet/CDN toegestaan is) -->
+  <!-- Optional for XLSX export (works only if CDN is allowed) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
@@ -82,16 +77,15 @@
   const nfEUR = new Intl.NumberFormat('nl-NL', { style:'currency', currency:'EUR' });
   function euro(n){ return nfEUR.format(n); }
 
-  function pct(n){
-    // n is 0..1, output zoals 17,079%
-    const val = n * 100;
-    return val.toFixed(3).replace('.', ',') + '%';
+  function euroPlain(n){
+    const s = euro(n);
+    return s.replace('\u00A0', ' ');
   }
 
-  function euroPlain(n){
-    // string zoals "€ 3.690,00" (met spatie na €)
-    const s = euro(n); // "€ 3.690,00" (met NBSP)
-    return s.replace('\u00A0', ' ');
+  function pct(n){
+    // 0..1 -> "17,079%"
+    const val = n * 100;
+    return val.toFixed(3).replace('.', ',') + '%';
   }
 
   function toast(msg){
@@ -102,13 +96,42 @@
     window.__toastT = setTimeout(()=>{ el.style.display='none'; }, 2400);
   }
 
+  // EU number parsing:
+  // "1.660,50" -> 1660.50
+  // "3690"     -> 3690
+  // "3.690,00" -> 3690
+  // "€ 1.660,50" -> 1660.50
+  function parseEuroNumber(value){
+    if (value === null || value === undefined) return NaN;
+    const s = String(value).trim();
+    if (!s) return NaN;
+
+    const cleaned = s
+      .replace(/\u00A0/g, ' ')
+      .replace(/€/g, '')
+      .replace(/\s/g, '');
+
+    const normalized = cleaned
+      .replace(/\./g, '')
+      .replace(',', '.');
+
+    return parseFloat(normalized);
+  }
+
   function getInputs(){
+    const productRaw = document.getElementById('product').value.trim() || '—';
+    const listPriceRaw = document.getElementById('listPrice').value;
+    const tcvRaw = document.getElementById('tcv').value;
+
     return {
-      product: document.getElementById('product').value.trim() || '—',
-      listPrice: parseFloat(document.getElementById('listPrice').value),
+      productRaw,
+      listPriceRaw,
+      tcvRaw,
+      product: productRaw,
+      listPrice: parseEuroNumber(listPriceRaw),
       quantity: parseInt(document.getElementById('quantity').value, 10),
       years: parseInt(document.getElementById('years').value, 10),
-      tcv: parseFloat(document.getElementById('tcv').value),
+      tcv: parseEuroNumber(tcvRaw),
     };
   }
 
@@ -117,11 +140,11 @@
   // ---------- URL params (shareable link) ----------
   function setUrlParams(state){
     const url = new URL(window.location.href);
-    url.searchParams.set('product', state.product);
-    url.searchParams.set('listPrice', String(state.listPrice));
+    url.searchParams.set('product', state.productRaw);
+    url.searchParams.set('listPrice', state.listPriceRaw);
     url.searchParams.set('quantity', String(state.quantity));
     url.searchParams.set('years', String(state.years));
-    url.searchParams.set('tcv', String(state.tcv));
+    url.searchParams.set('tcv', state.tcvRaw);
     window.history.replaceState({}, '', url.toString());
   }
 
@@ -146,14 +169,14 @@
   function buildRows(state){
     const { product, listPrice, quantity, years, tcv } = state;
 
-    if(!isValidNumber(listPrice) || listPrice <= 0) return { error: 'List prijs moet > 0 zijn.' };
-    if(!isValidNumber(quantity) || quantity <= 0) return { error: 'Quantity moet > 0 zijn.' };
-    if(!isValidNumber(years) || years <= 0) return { error: 'Duration (Years) moet > 0 zijn.' };
-    if(!isValidNumber(tcv) || tcv <= 0) return { error: 'TCV moet > 0 zijn.' };
+    if(!isValidNumber(listPrice) || listPrice <= 0) return { error: 'List Price must be a valid amount > 0 (e.g. 445,00 or 1.660,50).' };
+    if(!isValidNumber(quantity) || quantity <= 0) return { error: 'Quantity must be > 0.' };
+    if(!isValidNumber(years) || years <= 0) return { error: 'Duration (Years) must be > 0.' };
+    if(!isValidNumber(tcv) || tcv <= 0) return { error: 'Target TCV must be a valid amount > 0 (e.g. 1.660,50).' };
 
     const listTotal = listPrice * quantity * years;
     const ratio = tcv / listTotal;
-    let baseDiscount = 1 - ratio;              // jaar 2 korting
+    let baseDiscount = 1 - ratio; // base discount (year 2)
     baseDiscount = clamp(baseDiscount, 0, 1);
 
     const discounts = [];
@@ -167,7 +190,6 @@
       } else {
         if(y === 1) d = baseDiscount + 0.05;
         else if(y === years) d = baseDiscount - 0.05;
-        // tussenjaren: base
       }
       discounts.push(clamp(d, 0, 1));
     }
@@ -200,8 +222,6 @@
     const state = getInputs();
     const out = document.getElementById('out');
 
-    // Update URL live, zodat de link altijd “klopt”
-    // (als je dit niet wil: comment deze regel uit)
     setUrlParams(state);
 
     const result = buildRows(state);
@@ -213,10 +233,10 @@
     const { rows, baseDiscount, listTotal, sumNet } = result;
 
     out.innerHTML = `
-      <div class="row"><div>List totaal</div><div><b>${euroPlain(listTotal)}</b></div></div>
-      <div class="row"><div>TCV totaal (na korting)</div><div><b>${euroPlain(state.tcv)}</b></div></div>
-      <div class="row"><div>Base korting (jaar 2)</div><div><b>${pct(baseDiscount)}</b></div></div>
-      <div class="row"><div>Check: som van jaarregels</div><div><b>${euroPlain(sumNet)}</b></div></div>
+      <div class="row"><div>List Total</div><div><b>${euroPlain(listTotal)}</b></div></div>
+      <div class="row"><div>Target TCV (After Discount)</div><div><b>${euroPlain(state.tcv)}</b></div></div>
+      <div class="row"><div>Base Discount (Year 2)</div><div><b>${pct(baseDiscount)}</b></div></div>
+      <div class="row"><div>Check: Sum of Year Lines</div><div><b>${euroPlain(sumNet)}</b></div></div>
 
       <table>
         <thead>
@@ -246,10 +266,6 @@
           `).join('')}
         </tbody>
       </table>
-      <p class="muted">
-        Verdeling: jaar 1 = base + 5 procentpunt, laatste jaar = base - 5 procentpunt, overige jaren = base.
-        (Bij 2 jaar: jaar 1 +5pp en jaar 2 -5pp.)
-      </p>
     `;
   }
 
@@ -273,15 +289,13 @@
 
     const rows = result.rows;
 
-    // Exact kolommen zoals jij wil
     const headers = [
       "Product","Quantity","Duration (Years)","Year",
       "List Price per License (€)","Discount (%)",
       "Discounted Price per License (€)","Total Price (€)"
     ];
 
-    // NL Excel: semicolon delimiter is vaak het veiligst
-    const sep = ';';
+    const sep = ';'; // best for NL Excel
 
     const lines = [];
     lines.push(headers.join(sep));
@@ -298,21 +312,19 @@
         euroPlain(r["Total Price (€)"])
       ].map(v => {
         const s = String(v);
-        // CSV escaping
         if(s.includes('"') || s.includes('\n') || s.includes(sep)) return `"${s.replaceAll('"','""')}"`;
         return s;
       }).join(sep);
       lines.push(line);
     }
 
-    // BOM helpt Excel met UTF-8 (€ teken)
-    const csv = "\uFEFF" + lines.join("\n");
-    downloadBlob("korting-calculator.csv", "text/csv;charset=utf-8", csv);
+    const csv = "\uFEFF" + lines.join("\n"); // BOM for Excel
+    downloadBlob("discount-calculator.csv", "text/csv;charset=utf-8", csv);
   }
 
   function exportXLSX(){
     if(typeof XLSX === 'undefined'){
-      toast('XLSX library niet geladen (CDN geblokkeerd). Gebruik CSV export.');
+      toast('XLSX library not loaded (CDN blocked). Use CSV export.');
       return;
     }
     const state = getInputs();
@@ -333,31 +345,29 @@
     const ws = XLSX.utils.json_to_sheet(rows, { header: Object.keys(rows[0]) });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Pricing");
-
-    XLSX.writeFile(wb, "korting-calculator.xlsx");
+    XLSX.writeFile(wb, "discount-calculator.xlsx");
   }
 
   // ---------- buttons ----------
   document.getElementById('btnCopy').addEventListener('click', async () => {
     try{
-      // zorg dat URL up-to-date is
       setUrlParams(getInputs());
       await navigator.clipboard.writeText(window.location.href);
-      toast('Link gekopieerd naar clipboard.');
+      toast('Link copied to clipboard.');
     } catch(e){
-      toast('Kon niet kopiëren (browser/permissions). Kopieer de URL handmatig.');
+      toast('Copy failed (browser/permissions). Please copy the URL manually.');
     }
   });
 
   document.getElementById('btnReset').addEventListener('click', () => {
     document.getElementById('product').value = 'SOS 300';
-    document.getElementById('listPrice').value = '445';
+    document.getElementById('listPrice').value = '445,00';
     document.getElementById('quantity').value = '10';
     document.getElementById('years').value = '1';
-    document.getElementById('tcv').value = '3690';
+    document.getElementById('tcv').value = '3.690,00';
     clearUrlParams();
     render();
-    toast('Gerest.');
+    toast('Reset done.');
   });
 
   document.getElementById('btnCSV').addEventListener('click', exportCSV);
