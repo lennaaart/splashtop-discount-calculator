@@ -16,13 +16,13 @@
       --soft2:#fcfcfc;
       --highlight:#f3f6ff;
     }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 24px; max-width: 1050px; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 24px; max-width: 1100px; }
     h1 { margin: 0 0 12px; font-size: 24px; }
     .card { border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-top: 14px; background: var(--bg); }
     label { font-size: 13px; color: #333; display:block; margin-bottom:6px; }
     input, select { width: 100%; padding: 10px; font-size: 15px; border:1px solid var(--border); border-radius: 10px; background:#fff; }
     input:disabled, select:disabled { background: #f2f2f2; color:#777; }
-    .grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px 12px; align-items: end; }
+    .grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 12px 12px; align-items: end; }
     .grid2 { display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px 12px; }
     .span2{ grid-column: span 2; }
     .span4{ grid-column: 1 / -1; }
@@ -55,7 +55,6 @@
     tbody tr:nth-child(odd) td { background: #fff; }
     tbody tr:nth-child(even) td { background: var(--soft2); }
 
-    /* highlight Total Price column */
     th.total, td.total { background: var(--highlight) !important; font-weight: 700; }
   </style>
 </head>
@@ -63,11 +62,18 @@
   <h1>Discount Calculator</h1>
 
   <div class="card">
-    <!-- Compact row -->
     <div class="grid">
       <div>
         <label>Product</label>
         <input id="product" type="text" value="Enterprise Remote Support" />
+      </div>
+      <div>
+        <label>Currency</label>
+        <select id="currency">
+          <option value="EUR" selected>EUR (€)</option>
+          <option value="USD">USD ($)</option>
+          <option value="GBP">GBP (£)</option>
+        </select>
       </div>
       <div>
         <label>Quantity</label>
@@ -91,15 +97,15 @@
 
     <div class="grid2">
       <div class="span2">
-        <label>List Price per License per Year (€)</label>
+        <label id="lblListPrice">List Price per License per Year</label>
         <input id="listPrice" type="text" inputmode="decimal" placeholder="e.g. 1.080,00" value="1.080,00" />
+        <div class="muted">European input supported (e.g. 1.660,50).</div>
       </div>
       <div class="span2">
-        <label>Target TCV Total (After Discount) (€)</label>
+        <label id="lblTCV">Target TCV Total (After Discount)</label>
         <input id="tcv" type="text" inputmode="decimal" placeholder="e.g. 24.270,00" value="24.270,00" />
       </div>
 
-      <!-- Frontloaded controls -->
       <div id="frontControls" class="span4" style="display:none;">
         <div class="grid2">
           <div>
@@ -112,7 +118,6 @@
         <div class="muted">Front-loaded applies: Year 1 = base + Δ, Last year = base − Δ, middle years = base.</div>
       </div>
 
-      <!-- Custom controls -->
       <div id="customControls" class="span4" style="display:none;">
         <div class="grid2">
           <div>
@@ -153,6 +158,7 @@
   // =========================
   const EXAMPLE = {
     product: 'Enterprise Remote Support',
+    currency: 'EUR',
     listPrice: '1.080,00',
     quantity: '10',
     years: '3',
@@ -168,9 +174,26 @@
   // =========================
   function clamp(x, min, max){ return Math.max(min, Math.min(max, x)); }
 
-  const nfEUR = new Intl.NumberFormat('nl-NL', { style:'currency', currency:'EUR' });
-  function euro(n){ return nfEUR.format(n); }
-  function euroPlain(n){ return euro(n).replace('\u00A0', ' '); } // ensure normal space
+  // Build a formatter for the currently selected currency, with NL formatting (1.234,56)
+  function getCurrencyCode(){
+    return document.getElementById('currency').value || 'EUR';
+  }
+  function getMoneyFormatter(){
+    return new Intl.NumberFormat('nl-NL', { style:'currency', currency: getCurrencyCode() });
+  }
+  function money(n){
+    return getMoneyFormatter().format(n);
+  }
+  function moneyPlain(n){
+    return money(n).replace('\u00A0', ' '); // ensure normal space
+  }
+  function moneyNoSymbol(n){
+    // Return "1.080,00" (no currency sign)
+    const s = moneyPlain(n);
+    // Remove any leading currency sign(s) and space; keep the number part.
+    // This is robust for €, $, £ in nl-NL formatting.
+    return s.replace(/^[^\d-]+/,'').trim();
+  }
 
   // 0..1 -> "17,07895%"
   function pct(n){
@@ -182,7 +205,7 @@
   // "1.660,50" -> 1660.50
   // "3690"     -> 3690
   // "3.690,00" -> 3690
-  // "€ 1.660,50" -> 1660.50
+  // Supports €/$/£
   function parseEuroNumber(value){
     if (value === null || value === undefined) return NaN;
     const s = String(value).trim();
@@ -190,7 +213,7 @@
 
     const cleaned = s
       .replace(/\u00A0/g, ' ')
-      .replace(/€/g, '')
+      .replace(/[€$£]/g, '')
       .replace(/\s/g, '');
 
     const normalized = cleaned
@@ -198,14 +221,6 @@
       .replace(',', '.');
 
     return parseFloat(normalized);
-  }
-
-  // format a number to EU string without € symbol: "1.080,00"
-  function formatEuroNumberNoSymbol(n){
-    // Use currency formatting and strip "€ " prefix
-    const s = euroPlain(n); // "€ 1.080,00"
-    // Remove leading currency symbol and possible space
-    return s.replace(/^€\s?/, '').trim();
   }
 
   function toast(msg){
@@ -238,16 +253,17 @@
   // =========================
   // Discount model UI
   // =========================
- function updateModelUI(){
-  const modelEl = document.getElementById('model');
-  const model = modelEl ? modelEl.value : 'frontloaded';
+  function updateModelUI(){
+    const model = document.getElementById('model').value;
+    document.getElementById('frontControls').style.display = (model === 'frontloaded') ? 'block' : 'none';
+    document.getElementById('customControls').style.display = (model === 'custom') ? 'block' : 'none';
+  }
 
-  const front = document.getElementById('frontControls');
-  const custom = document.getElementById('customControls');
-
-  if(front) front.style.display = (model === 'frontloaded') ? 'block' : 'none';
-  if(custom) custom.style.display = (model === 'custom') ? 'block' : 'none';
-}
+  function updateCurrencyLabels(){
+    const code = getCurrencyCode();
+    document.getElementById('lblListPrice').textContent = `List Price per License per Year (${code})`;
+    document.getElementById('lblTCV').textContent = `Target TCV Total (After Discount) (${code})`;
+  }
 
   // =========================
   // Inputs & validation
@@ -261,6 +277,7 @@
       productRaw: product,
       listPriceRaw,
       tcvRaw,
+      currency: getCurrencyCode(),
       product: product || '—',
       quantity: parseInt(document.getElementById('quantity').value, 10),
       years: parseInt(document.getElementById('years').value, 10),
@@ -306,6 +323,7 @@
   function setUrlParams(state){
     const url = new URL(window.location.href);
     url.searchParams.set('product', state.productRaw);
+    url.searchParams.set('currency', state.currency);
     url.searchParams.set('quantity', String(state.quantity));
     url.searchParams.set('years', String(state.years));
     url.searchParams.set('listPrice', state.listPriceRaw);
@@ -328,6 +346,7 @@
     const p = url.searchParams;
 
     if(p.has('product')) setValue('product', p.get('product'));
+    if(p.has('currency')) setValue('currency', p.get('currency'));
     if(p.has('quantity')) setValue('quantity', p.get('quantity'));
     if(p.has('years')) setValue('years', p.get('years'));
     if(p.has('listPrice')) setValue('listPrice', p.get('listPrice'));
@@ -342,7 +361,6 @@
   // Core calculation
   // =========================
   function buildDiscounts(baseDiscount, years, model, state){
-    // baseDiscount is 0..1
     const discounts = new Array(years).fill(baseDiscount);
     let msgs = [];
     let clamped = false;
@@ -350,7 +368,6 @@
     if(years <= 1) return { discounts, msgs };
 
     if(model === 'flat'){
-      // all base
       return { discounts, msgs };
     }
 
@@ -367,7 +384,6 @@
       discounts[years-1] = baseDiscount + dl;
     }
 
-    // clamp each year and track
     for(let i=0;i<discounts.length;i++){
       const before = discounts[i];
       discounts[i] = clamp(discounts[i], 0, 1);
@@ -384,7 +400,6 @@
 
     const listTotal = state.listPrice * state.quantity * state.years;
 
-    // sanity
     if(state.tcv > listTotal){
       msgs.push({ type:'warn', text:'Target TCV exceeds List Total. Resulting discount would be negative; discounts are clamped to a minimum of 0%.' });
     }
@@ -417,17 +432,16 @@
         Quantity: state.quantity,
         "Duration (Years)": state.years,
         Year: y,
-        "List Price per License (€)": state.listPrice,
+        "List Price per License": state.listPrice,
         "Discount (%)": d,
-        "Discounted Price per License (€)": discountedPerLicense,
-        "Total Price (€)": totalPrice
+        "Discounted Price per License": discountedPerLicense,
+        "Total Price": totalPrice
       });
     }
 
-    // check drift (mostly rounding display)
     const diff = Math.abs(sumNet - state.tcv);
     if(diff > 0.01){
-      msgs.push({ type:'warn', text:`Sum of yearly lines differs from Target TCV by ${euroPlain(diff)}. (This can happen with clamping or extreme inputs.)` });
+      msgs.push({ type:'warn', text:`Sum of yearly lines differs from Target TCV by ${moneyPlain(diff)}.` });
     } else {
       msgs.push({ type:'ok', text:'Check passed: Sum of yearly lines matches Target TCV (within rounding).' });
     }
@@ -439,6 +453,7 @@
   // Rendering
   // =========================
   function render(){
+    updateCurrencyLabels();
     updateModelUI();
 
     const state = getInputs();
@@ -449,7 +464,7 @@
 
     if(!v.ok){
       setDisabled(true);
-      showMessages(v.msgs.length ? v.msgs : [{type:'muted', text:'Enter values to calculate.'}]);
+      showMessages(v.msgs);
       out.innerHTML = `<div class="muted">Enter all required values to see results.</div>`;
       return;
     }
@@ -458,11 +473,13 @@
     showMessages(result.msgs);
     setDisabled(false);
 
+    const code = state.currency;
+
     out.innerHTML = `
-      <div class="row"><div>List Total</div><div><b>${euroPlain(result.listTotal)}</b></div></div>
-      <div class="row"><div>Target TCV (After Discount)</div><div><b>${euroPlain(state.tcv)}</b></div></div>
+      <div class="row"><div>List Total (${code})</div><div><b>${moneyPlain(result.listTotal)}</b></div></div>
+      <div class="row"><div>Target TCV (After Discount) (${code})</div><div><b>${moneyPlain(state.tcv)}</b></div></div>
       <div class="row"><div>Base Discount</div><div><b>${pct(result.baseDiscount)}</b></div></div>
-      <div class="row"><div>Sum of Year Lines</div><div><b>${euroPlain(result.sumNet)}</b></div></div>
+      <div class="row"><div>Sum of Year Lines (${code})</div><div><b>${moneyPlain(result.sumNet)}</b></div></div>
 
       <table>
         <thead>
@@ -471,10 +488,10 @@
             <th>Quantity</th>
             <th>Duration (Years)</th>
             <th>Year</th>
-            <th>List Price per License (€)</th>
+            <th>List Price per License (${code})</th>
             <th>Discount (%)</th>
-            <th>Discounted Price per License (€)</th>
-            <th class="total">Total Price (€)</th>
+            <th>Discounted Price per License (${code})</th>
+            <th class="total">Total Price (${code})</th>
           </tr>
         </thead>
         <tbody>
@@ -484,10 +501,10 @@
               <td>${r["Quantity"]}</td>
               <td>${r["Duration (Years)"]}</td>
               <td>${r["Year"]}</td>
-              <td>${euroPlain(r["List Price per License (€)"])}</td>
+              <td>${moneyPlain(r["List Price per License"])}</td>
               <td>${pct(r["Discount (%)"])}</td>
-              <td>${euroPlain(r["Discounted Price per License (€)"])}</td>
-              <td class="total">${euroPlain(r["Total Price (€)"])}</td>
+              <td>${moneyPlain(r["Discounted Price per License"])}</td>
+              <td class="total">${moneyPlain(r["Total Price"])}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -517,14 +534,15 @@
 
     const result = compute(state);
     const rows = result.rows;
+    const code = state.currency;
 
     const headers = [
       "Product","Quantity","Duration (Years)","Year",
-      "List Price per License (€)","Discount (%)",
-      "Discounted Price per License (€)","Total Price (€)"
+      `List Price per License (${code})`,"Discount (%)",
+      `Discounted Price per License (${code})`, `Total Price (${code})`
     ];
 
-    const sep = ';'; // best for NL Excel
+    const sep = ';';
     const lines = [];
     lines.push(headers.join(sep));
 
@@ -534,10 +552,10 @@
         r["Quantity"],
         r["Duration (Years)"],
         r["Year"],
-        euroPlain(r["List Price per License (€)"]),
+        moneyPlain(r["List Price per License"]),
         pct(r["Discount (%)"]),
-        euroPlain(r["Discounted Price per License (€)"]),
-        euroPlain(r["Total Price (€)"])
+        moneyPlain(r["Discounted Price per License"]),
+        moneyPlain(r["Total Price"])
       ].map(v => {
         const s = String(v);
         if(s.includes('"') || s.includes('\n') || s.includes(sep)) return `"${s.replaceAll('"','""')}"`;
@@ -546,7 +564,7 @@
       lines.push(line);
     }
 
-    const csv = "\uFEFF" + lines.join("\n"); // BOM for Excel
+    const csv = "\uFEFF" + lines.join("\n");
     downloadBlob("discount-calculator.csv", "text/csv;charset=utf-8", csv);
   }
 
@@ -560,15 +578,17 @@
     if(!v.ok){ toast('Please fill all required fields first.'); return; }
 
     const result = compute(state);
+    const code = state.currency;
+
     const rows = result.rows.map(r => ({
       "Product": r["Product"],
       "Quantity": r["Quantity"],
       "Duration (Years)": r["Duration (Years)"],
       "Year": r["Year"],
-      "List Price per License (€)": euroPlain(r["List Price per License (€)"]),
+      [`List Price per License (${code})`]: moneyPlain(r["List Price per License"]),
       "Discount (%)": pct(r["Discount (%)"]),
-      "Discounted Price per License (€)": euroPlain(r["Discounted Price per License (€)"]),
-      "Total Price (€)": euroPlain(r["Total Price (€)"]),
+      [`Discounted Price per License (${code})`]: moneyPlain(r["Discounted Price per License"]),
+      [`Total Price (${code})`]: moneyPlain(r["Total Price"]),
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows, { header: Object.keys(rows[0]) });
@@ -587,11 +607,12 @@
 
     const result = compute(state);
     const rows = result.rows;
+    const code = state.currency;
 
     const headers = [
       "Product","Quantity","Duration (Years)","Year",
-      "List Price per License (€)","Discount (%)",
-      "Discounted Price per License (€)","Total Price (€)"
+      `List Price per License (${code})`,"Discount (%)",
+      `Discounted Price per License (${code})`, `Total Price (${code})`
     ];
 
     const lines = [];
@@ -603,10 +624,10 @@
         r["Quantity"],
         r["Duration (Years)"],
         r["Year"],
-        euroPlain(r["List Price per License (€)"]),
+        moneyPlain(r["List Price per License"]),
         pct(r["Discount (%)"]),
-        euroPlain(r["Discounted Price per License (€)"]),
-        euroPlain(r["Total Price (€)"])
+        moneyPlain(r["Discounted Price per License"]),
+        moneyPlain(r["Total Price"])
       ].join('\t'));
     }
 
@@ -619,7 +640,7 @@
   }
 
   // =========================
-  // EU input formatting on blur
+  // Money input formatting on blur (EU style, no symbol)
   // =========================
   function formatMoneyInputOnBlur(id){
     const el = document.getElementById(id);
@@ -629,7 +650,7 @@
     const n = parseEuroNumber(raw);
     if(!isFinite(n)) return;
 
-    el.value = formatEuroNumberNoSymbol(n);
+    el.value = moneyNoSymbol(n); // formats using selected currency, but we strip symbol
   }
 
   // =========================
@@ -637,7 +658,6 @@
   // =========================
   document.getElementById('btnCopyLink').addEventListener('click', async () => {
     try{
-      // Ensure params are up-to-date
       setUrlParams(getInputs());
       await navigator.clipboard.writeText(window.location.href);
       toast('Link copied.');
@@ -650,6 +670,7 @@
 
   document.getElementById('btnExample').addEventListener('click', () => {
     setValue('product', EXAMPLE.product);
+    setValue('currency', EXAMPLE.currency);
     setValue('listPrice', EXAMPLE.listPrice);
     setValue('quantity', EXAMPLE.quantity);
     setValue('years', EXAMPLE.years);
@@ -658,6 +679,7 @@
     setValue('deltaPP', EXAMPLE.deltaPP);
     setValue('customFirstPP', EXAMPLE.customFirstPP);
     setValue('customLastPP', EXAMPLE.customLastPP);
+    updateCurrencyLabels();
     updateModelUI();
     render();
     toast('Example loaded.');
@@ -669,8 +691,8 @@
     setValue('quantity', '');
     setValue('years', '');
     setValue('tcv', '');
-    // keep model selection as-is
     clearUrlParams();
+    updateCurrencyLabels();
     updateModelUI();
     render();
     toast('Cleared.');
@@ -680,10 +702,11 @@
   document.getElementById('btnXLSX').addEventListener('click', exportXLSX);
 
   // Live updates
-  ['product','quantity','years','listPrice','tcv','model','deltaPP','customFirstPP','customLastPP'].forEach(id => {
+  ['product','currency','quantity','years','listPrice','tcv','model','deltaPP','customFirstPP','customLastPP'].forEach(id => {
     document.getElementById(id).addEventListener('input', render);
   });
   document.getElementById('model').addEventListener('change', () => { updateModelUI(); render(); });
+  document.getElementById('currency').addEventListener('change', () => { updateCurrencyLabels(); render(); });
 
   // Format money inputs when leaving the field
   document.getElementById('listPrice').addEventListener('blur', () => { formatMoneyInputOnBlur('listPrice'); render(); });
@@ -691,8 +714,12 @@
 
   // init
   loadFromUrl();
+  updateCurrencyLabels();
   updateModelUI();
   render();
+
+  // extra UI sync after first paint (prevents rare “controls appear after refresh” issues)
+  requestAnimationFrame(() => { updateCurrencyLabels(); updateModelUI(); });
 </script>
 </body>
 </html>
