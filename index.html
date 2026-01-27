@@ -238,11 +238,16 @@
   // =========================
   // Discount model UI
   // =========================
-  function updateModelUI(){
-    const model = document.getElementById('model').value;
-    document.getElementById('frontControls').style.display = (model === 'frontloaded') ? 'block' : 'none';
-    document.getElementById('customControls').style.display = (model === 'custom') ? 'block' : 'none';
-  }
+ function updateModelUI(){
+  const modelEl = document.getElementById('model');
+  const model = modelEl ? modelEl.value : 'frontloaded';
+
+  const front = document.getElementById('frontControls');
+  const custom = document.getElementById('customControls');
+
+  if(front) front.style.display = (model === 'frontloaded') ? 'block' : 'none';
+  if(custom) custom.style.display = (model === 'custom') ? 'block' : 'none';
+}
 
   // =========================
   // Inputs & validation
