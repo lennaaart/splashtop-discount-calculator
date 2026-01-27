@@ -30,12 +30,12 @@
     <div class="grid">
       <div>
         <label>Product</label>
-        <input id="product" type="text" placeholder="e.g. Enterprise" value="Enterprise" />
+        <input id="product" type="text" value="Enterprise Remote Support" />
       </div>
 
       <div>
         <label>List Price per License per Year (€)</label>
-        <input id="listPrice" type="text" inputmode="decimal" placeholder="e.g. 1080,00" value="1080,00" />
+        <input id="listPrice" type="text" inputmode="decimal" placeholder="e.g. 1.080,00" value="1.080,00" />
       </div>
 
       <div>
@@ -45,19 +45,19 @@
 
       <div>
         <label>Duration (Years)</label>
-        <input id="years" type="number" step="1" value="1" />
+        <input id="years" type="number" step="1" value="3" />
       </div>
 
       <div style="grid-column:1 / -1;">
         <label>Target TCV Total (After Discount) (€)</label>
         <input id="tcv" type="text" inputmode="decimal" placeholder="e.g. 24.270,00" value="24.270,00" />
-        <div class="muted">European formatting supported (e.g. 24.270,00).</div>
       </div>
     </div>
 
     <div class="btns">
       <button id="btnCopy">Copy link</button>
-      <button id="btnReset">Reset</button>
+      <button id="btnExample">Example</button>
+      <button id="btnClear">Clear</button>
       <button id="btnCSV">Download Excel (CSV)</button>
       <button id="btnXLSX" title="Creates a real .xlsx (uses an external library).">Download Excel (XLSX)</button>
     </div>
@@ -71,19 +71,36 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
-  // ---------- helpers ----------
+  // =========================
+  // Defaults
+  // =========================
+  const EXAMPLE = {
+    product: 'Enterprise Remote Support',
+    listPrice: '1.080,00',
+    quantity: 10,
+    years: 3,
+    tcv: '24.270,00'
+  };
+
+  const CLEAR = {
+    product: '',
+    listPrice: '',
+    quantity: 1,
+    years: 1,
+    tcv: ''
+  };
+
+  // =========================
+  // Helpers
+  // =========================
   function clamp(x, min, max){ return Math.max(min, Math.min(max, x)); }
 
   const nfEUR = new Intl.NumberFormat('nl-NL', { style:'currency', currency:'EUR' });
   function euro(n){ return nfEUR.format(n); }
-
-  function euroPlain(n){
-    const s = euro(n);
-    return s.replace('\u00A0', ' ');
-  }
+  function euroPlain(n){ return euro(n).replace('\u00A0', ' '); }
 
   function pct(n){
-    // 0..1 -> "17,079%"
+    // 0..1 -> "17,07895%"
     const val = n * 100;
     return val.toFixed(5).replace('.', ',') + '%';
   }
@@ -118,6 +135,11 @@
     return parseFloat(normalized);
   }
 
+  function setValue(id, val){ document.getElementById(id).value = val; }
+
+  // =========================
+  // Inputs
+  // =========================
   function getInputs(){
     const productRaw = document.getElementById('product').value.trim() || '—';
     const listPriceRaw = document.getElementById('listPrice').value;
@@ -137,7 +159,9 @@
 
   function isValidNumber(x){ return typeof x === 'number' && isFinite(x); }
 
-  // ---------- URL params (shareable link) ----------
+  // =========================
+  // Shareable link
+  // =========================
   function setUrlParams(state){
     const url = new URL(window.location.href);
     url.searchParams.set('product', state.productRaw);
@@ -158,21 +182,66 @@
     const url = new URL(window.location.href);
     const p = url.searchParams;
 
-    if(p.has('product')) document.getElementById('product').value = p.get('product');
-    if(p.has('listPrice')) document.getElementById('listPrice').value = p.get('listPrice');
-    if(p.has('quantity')) document.getElementById('quantity').value = p.get('quantity');
-    if(p.has('years')) document.getElementById('years').value = p.get('years');
-    if(p.has('tcv')) document.getElementById('tcv').value = p.get('tcv');
+    if(p.has('product')) setValue('product', p.get('product'));
+    if(p.has('listPrice')) setValue('listPrice', p.get('listPrice'));
+    if(p.has('quantity')) setValue('quantity', p.get('quantity'));
+    if(p.has('years')) setValue('years', p.get('years'));
+    if(p.has('tcv')) setValue('tcv', p.get('tcv'));
   }
 
-  // ---------- core calculation ----------
+  // =========================
+  // Smart default years (optional)
+  // If years is empty/invalid, try to infer it from list price, quantity and TCV
+  // by picking a reasonable candidate that yields a base discount between 0..60%
+  // and as close as possible to 25% (common target).
+  // =========================
+  function inferYearsIfMissing(state){
+    if (isValidNumber(state.years) && state.years > 0) return state;
+
+    const listPrice = state.listPrice;
+    const qty = state.quantity;
+    const tcv = state.tcv;
+
+    if(!isValidNumber(listPrice) || listPrice <= 0) return state;
+    if(!isValidNumber(qty) || qty <= 0) return state;
+    if(!isValidNumber(tcv) || tcv <= 0) return state;
+
+    const candidates = [1,2,3,4,5];
+    let best = null;
+
+    for (const y of candidates){
+      const listTotal = listPrice * qty * y;
+      if (listTotal <= 0) continue;
+      const base = 1 - (tcv / listTotal);
+
+      // discard insane results
+      if (!isFinite(base) || base < 0 || base > 0.60) continue;
+
+      // score: closeness to 25% base discount
+      const score = Math.abs(base - 0.25);
+
+      if (!best || score < best.score){
+        best = { years: y, score };
+      }
+    }
+
+    if (best){
+      setValue('years', String(best.years));
+      return { ...state, years: best.years };
+    }
+    return state;
+  }
+
+  // =========================
+  // Core calculation
+  // =========================
   function buildRows(state){
     const { product, listPrice, quantity, years, tcv } = state;
 
-    if(!isValidNumber(listPrice) || listPrice <= 0) return { error: 'List Price must be a valid amount > 0 (e.g. 445,00 or 1.660,50).' };
+    if(!isValidNumber(listPrice) || listPrice <= 0) return { error: 'List Price must be a valid amount > 0 (e.g. 1.080,00 or 1.660,50).' };
     if(!isValidNumber(quantity) || quantity <= 0) return { error: 'Quantity must be > 0.' };
     if(!isValidNumber(years) || years <= 0) return { error: 'Duration (Years) must be > 0.' };
-    if(!isValidNumber(tcv) || tcv <= 0) return { error: 'Target TCV must be a valid amount > 0 (e.g. 1.660,50).' };
+    if(!isValidNumber(tcv) || tcv <= 0) return { error: 'Target TCV must be a valid amount > 0 (e.g. 24.270,00).' };
 
     const listTotal = listPrice * quantity * years;
     const ratio = tcv / listTotal;
@@ -219,9 +288,12 @@
   }
 
   function render(){
-    const state = getInputs();
-    const out = document.getElementById('out');
+    let state = getInputs();
 
+    // Infer years if user cleared it / invalid
+    state = inferYearsIfMissing(state);
+
+    const out = document.getElementById('out');
     setUrlParams(state);
 
     const result = buildRows(state);
@@ -269,7 +341,9 @@
     `;
   }
 
-  // ---------- exports ----------
+  // =========================
+  // Exports
+  // =========================
   function downloadBlob(filename, mime, content){
     const blob = new Blob([content], { type: mime });
     const url = URL.createObjectURL(blob);
@@ -348,7 +422,9 @@
     XLSX.writeFile(wb, "discount-calculator.xlsx");
   }
 
-  // ---------- buttons ----------
+  // =========================
+  // Buttons
+  // =========================
   document.getElementById('btnCopy').addEventListener('click', async () => {
     try{
       setUrlParams(getInputs());
@@ -359,20 +435,31 @@
     }
   });
 
-  document.getElementById('btnReset').addEventListener('click', () => {
-    document.getElementById('product').value = 'SOS 300';
-    document.getElementById('listPrice').value = '445,00';
-    document.getElementById('quantity').value = '10';
-    document.getElementById('years').value = '1';
-    document.getElementById('tcv').value = '3.690,00';
+  document.getElementById('btnExample').addEventListener('click', () => {
+    setValue('product', EXAMPLE.product);
+    setValue('listPrice', EXAMPLE.listPrice);
+    setValue('quantity', String(EXAMPLE.quantity));
+    setValue('years', String(EXAMPLE.years));
+    setValue('tcv', EXAMPLE.tcv);
+    render();
+    toast('Example loaded.');
+  });
+
+  document.getElementById('btnClear').addEventListener('click', () => {
+    setValue('product', CLEAR.product);
+    setValue('listPrice', CLEAR.listPrice);
+    setValue('quantity', String(CLEAR.quantity));
+    setValue('years', String(CLEAR.years));
+    setValue('tcv', CLEAR.tcv);
     clearUrlParams();
     render();
-    toast('Reset done.');
+    toast('Cleared.');
   });
 
   document.getElementById('btnCSV').addEventListener('click', exportCSV);
   document.getElementById('btnXLSX').addEventListener('click', exportXLSX);
 
+  // Live updates
   ['product','listPrice','quantity','years','tcv'].forEach(id => {
     document.getElementById(id).addEventListener('input', render);
   });
