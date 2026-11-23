@@ -1,725 +1,871 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Discount Calculator</title>
-  <style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Multi-year Pricing Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#f4f6f9;
+    --panel:#ffffff;
+    --ink:#14202e;
+    --muted:#5d6b7a;
+    --line:#dfe4ea;
+    --soft:#f1f4f8;
+    --accent:#1565d8;
+    --accent-soft:#e6efff;
+    --accent-ink:#ffffff;
+    --ghost:#dbe5f3;
+    --ok:#127a4a;
+    --ok-soft:#e7f6ee;
+    --warn:#9a5b00;
+    --warn-soft:#fff4e2;
+    --err:#b3261e;
+    --err-soft:#fdecea;
+    --radius:12px;
+    --sans:"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark){
     :root{
-      --border:#ddd;
-      --muted:#666;
-      --error:#b00020;
-      --ok:#0b6;
-      --warn:#a05a00;
-      --bg:#fff;
-      --soft:#f7f7f7;
-      --soft2:#fcfcfc;
-      --highlight:#f3f6ff;
+      color-scheme: dark;
+      --bg:#0f1620;
+      --panel:#17212d;
+      --ink:#e6ecf3;
+      --muted:#93a1b1;
+      --line:#283545;
+      --soft:#1d2936;
+      --accent:#5b9bff;
+      --accent-soft:#1c2f4d;
+      --accent-ink:#0b1420;
+      --ghost:#26364b;
+      --ok:#4cc38a;
+      --ok-soft:#14301f;
+      --warn:#f0b357;
+      --warn-soft:#352812;
+      --err:#ff8a80;
+      --err-soft:#3a1a18;
     }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 24px; max-width: 1100px; }
-    h1 { margin: 0 0 12px; font-size: 24px; }
-    .card { border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-top: 14px; background: var(--bg); }
-    label { font-size: 13px; color: #333; display:block; margin-bottom:6px; }
-    input, select { width: 100%; padding: 10px; font-size: 15px; border:1px solid var(--border); border-radius: 10px; background:#fff; }
-    input:disabled, select:disabled { background: #f2f2f2; color:#777; }
-    .grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 12px 12px; align-items: end; }
-    .grid2 { display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px 12px; }
-    .span2{ grid-column: span 2; }
-    .span4{ grid-column: 1 / -1; }
-    .row { display:flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed #eee; }
-    .row:last-child { border-bottom: 0; }
-    .muted { color: var(--muted); font-size: 13px; }
-    .err { color: var(--error); font-weight: 600; }
-    .warn { color: var(--warn); font-weight: 600; }
-    .ok { color: var(--ok); font-weight: 600; }
-    .btns { display:flex; flex-wrap:wrap; gap:10px; margin-top: 12px; }
-    button { padding: 10px 12px; font-size: 14px; cursor:pointer; border-radius: 10px; border: 1px solid #ccc; background:#fff; }
-    button:hover { background:#f6f6f6; }
-    button:disabled { cursor:not-allowed; opacity: .55; }
-    .toast { margin-top: 10px; font-size: 13px; color: var(--ok); display:none; }
-    .messages { margin-top: 10px; display:grid; gap:8px; }
-    .msg { border:1px solid var(--border); border-radius: 10px; padding: 10px; background: var(--soft2); font-size: 13px; }
-    .msg.warn { border-color: #f2c38b; background:#fff8ef; color: var(--warn); font-weight: 600; }
-    .msg.err { border-color: #f0a0a8; background:#fff1f3; color: var(--error); font-weight: 600; }
-    .msg.ok { border-color: #9fe0c0; background:#f0fff7; color: var(--ok); font-weight: 600; }
+  }
+  *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--sans); font-size:15px; line-height:1.45;
+    padding: env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);
+  }
+  .wrap{ max-width:1240px; margin:0 auto; padding:28px 20px 48px; }
+  header.top{ display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+  header.top h1{ font-size:22px; font-weight:600; margin:0; letter-spacing:-0.01em; }
+  header.top p{ margin:0; color:var(--muted); font-size:14px; }
 
-    table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 12px; overflow:hidden; border:1px solid var(--border); border-radius: 12px; }
-    thead th {
-      position: sticky; top: 0; z-index: 2;
-      background: var(--soft);
-      border-bottom: 1px solid var(--border);
-      font-size: 13px;
-    }
-    th, td { text-align: right; padding: 10px 10px; }
-    th:first-child, td:first-child { text-align: left; }
-    tbody tr:nth-child(odd) td { background: #fff; }
-    tbody tr:nth-child(even) td { background: var(--soft2); }
+  .layout{ display:grid; grid-template-columns: 380px minmax(0,1fr); gap:20px; align-items:start; }
+  @media (max-width: 900px){ .layout{ grid-template-columns: 1fr; } }
 
-    th.total, td.total { background: var(--highlight) !important; font-weight: 700; }
-  </style>
+  .panel{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px; }
+  .inputs{ position:sticky; top:16px; }
+  @media (max-width: 900px){ .inputs{ position:static; } }
+
+  .section + .section{ margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
+  .section h2{ font-size:14px; font-weight:600; margin:0 0 10px; }
+
+  .field{ margin-bottom:10px; }
+  .field:last-child{ margin-bottom:0; }
+  label{ display:block; font-size:13px; color:var(--muted); margin-bottom:4px; }
+  input, select{
+    width:100%; font:inherit; color:var(--ink); background:var(--panel);
+    border:1px solid var(--line); border-radius:8px; padding:9px 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  input:focus, select:focus{ outline:2px solid var(--accent); outline-offset:-1px; border-color:transparent; }
+  input:disabled{ opacity:.55; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .row3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .hint{ font-size:12.5px; color:var(--muted); margin-top:6px; }
+
+  .seg{ display:flex; background:var(--soft); border:1px solid var(--line); border-radius:9px; padding:3px; gap:3px; }
+  .seg button{
+    flex:1; font:inherit; font-size:13px; border:0; background:transparent; color:var(--muted);
+    padding:7px 6px; border-radius:7px; cursor:pointer;
+  }
+  .seg button.on{ background:var(--panel); color:var(--ink); font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,.08); }
+
+  .manual-list{ display:grid; grid-template-columns: repeat(auto-fill, minmax(90px,1fr)); gap:8px; }
+
+  .results{ display:flex; flex-direction:column; gap:20px; min-width:0; }
+
+  .deal-line{ font-size:14px; color:var(--muted); margin:0 0 14px; }
+  .deal-line b{ color:var(--ink); font-weight:600; }
+  .kpis{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:14px; }
+  @media (max-width: 560px){ .kpis{ grid-template-columns: 1fr; } }
+  .kpi{ background:var(--soft); border-radius:10px; padding:14px 16px; }
+  .kpi .v{ font-family:var(--mono); font-size:26px; font-weight:500; letter-spacing:-0.02em; font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .kpi .l{ font-size:13px; color:var(--muted); margin-top:2px; }
+  .kpi.main{ background:var(--accent); color:var(--accent-ink); }
+  .kpi.main .l{ color:var(--accent-ink); opacity:.85; }
+
+  .status{ margin-top:14px; border-radius:9px; padding:10px 12px; font-size:13.5px; }
+  .status.ok{ background:var(--ok-soft); color:var(--ok); }
+  .status.warn{ background:var(--warn-soft); color:var(--warn); }
+  .status.err{ background:var(--err-soft); color:var(--err); }
+  .status div + div{ margin-top:3px; }
+
+  .tbl-wrap{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; font-variant-numeric: tabular-nums; }
+  th, td{ padding:10px 10px; text-align:right; white-space:nowrap; }
+  th:first-child, td:first-child{ text-align:left; }
+  thead th{ font-size:12.5px; font-weight:500; color:var(--muted); border-bottom:1px solid var(--line); }
+  tbody td{ border-bottom:1px solid var(--line); font-family:var(--mono); font-size:14px; }
+  tbody td:first-child{ font-family:var(--sans); }
+  tfoot td{ font-weight:600; font-family:var(--mono); font-size:14px; padding-top:12px; }
+  tfoot td:first-child{ font-family:var(--sans); }
+  td.up{ color:var(--ok); }
+  td.down{ color:var(--warn); }
+  td.neg{ color:var(--err); }
+
+  .chart{ margin-top:16px; }
+  .chart svg{ width:100%; height:auto; display:block; }
+  .legend{ display:flex; gap:16px; font-size:12.5px; color:var(--muted); margin-top:6px; }
+  .legend i{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:-1px; }
+
+  .scen{ width:100%; }
+  .scen tbody tr{ cursor:pointer; }
+  .scen tbody tr:hover td{ background:var(--soft); }
+  .scen tbody tr.cur td{ background:var(--accent-soft); }
+  .scen td:first-child{ font-weight:500; }
+
+  .head-row{ display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; }
+  .head-row h2{ font-size:15px; font-weight:600; margin:0; }
+  .head-row span{ font-size:12.5px; color:var(--muted); }
+
+  .actions{ display:flex; flex-wrap:wrap; gap:8px; }
+  .btn{
+    font:inherit; font-size:13.5px; padding:8px 12px; border-radius:8px; cursor:pointer;
+    border:1px solid var(--line); background:var(--panel); color:var(--ink);
+  }
+  .btn:hover{ background:var(--soft); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  .btn.primary:hover{ filter:brightness(1.06); }
+  .check{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin-top:10px; }
+  .check input{ width:auto; }
+
+  .toast{
+    position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:var(--panel); padding:9px 14px; border-radius:8px; font-size:13.5px;
+    opacity:0; pointer-events:none; transition:all .2s ease;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .print-only{ display:none; }
+  @media print{
+    body{ background:#fff; color:#000; }
+    .inputs, .actions, .no-print, .toast, header.top p{ display:none !important; }
+    .layout{ grid-template-columns:1fr; }
+    .panel{ border:0; padding:0; }
+    .kpi.main{ background:#eef3fb; color:#000; }
+    .kpi.main .l{ color:#333; }
+    .print-only{ display:block; }
+  }
+</style>
 </head>
 <body>
-  <h1>Discount Calculator</h1>
+<div class="wrap">
+  <header class="top">
+    <h1>Multi-year Pricing Calculator</h1>
+    <p>Turn a target into a year-by-year price schedule.</p>
+  </header>
 
-  <div class="card">
-    <div class="grid">
-      <div>
-        <label>Product</label>
-        <input id="product" type="text" value="Enterprise Remote Support" />
+  <div class="layout">
+    <!-- ============ INPUTS ============ -->
+    <aside class="panel inputs">
+      <div class="section">
+        <h2>Deal</h2>
+        <div class="field">
+          <label for="product">Product</label>
+          <input id="product" type="text" value="Enterprise Remote Support" />
+        </div>
+        <div class="row3">
+          <div class="field">
+            <label for="currency">Currency</label>
+            <select id="currency">
+              <option value="EUR">EUR</option>
+              <option value="USD">USD</option>
+              <option value="GBP">GBP</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="quantity">Licenses</label>
+            <input id="quantity" type="text" inputmode="numeric" value="10" />
+          </div>
+          <div class="field">
+            <label for="years">Years</label>
+            <input id="years" type="text" inputmode="numeric" value="3" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="listPrice">List price per license per year</label>
+          <input id="listPrice" type="text" inputmode="decimal" value="1.080,00" />
+        </div>
       </div>
-      <div>
-        <label>Currency</label>
-        <select id="currency">
-          <option value="EUR" selected>EUR (€)</option>
-          <option value="USD">USD ($)</option>
-          <option value="GBP">GBP (£)</option>
-        </select>
+
+      <div class="section" id="targetSection">
+        <h2>Target</h2>
+        <div class="seg" id="targetSeg">
+          <button data-v="tcv">TCV</button>
+          <button data-v="price">Price / license</button>
+          <button data-v="disc">Avg discount</button>
+        </div>
+        <div class="field" style="margin-top:10px;">
+          <label for="target" id="targetLabel">Target total contract value</label>
+          <input id="target" type="text" inputmode="decimal" value="24.270,00" />
+        </div>
+        <div class="hint" id="targetHint"></div>
       </div>
-      <div>
-        <label>Quantity</label>
-        <input id="quantity" type="number" step="1" value="10" />
-      </div>
-      <div>
-        <label>Duration (Years)</label>
-        <input id="years" type="number" step="1" value="3" />
-      </div>
-      <div>
-        <label>Discount Model</label>
+
+      <div class="section">
+        <h2>Price structure</h2>
         <select id="model">
-          <option value="flat">Flat (same every year)</option>
-          <option value="frontloaded" selected>Front-loaded (+Δ / -Δ)</option>
-          <option value="custom">Custom (year deltas)</option>
+          <option value="yoy">Yearly price increase (%)</option>
+          <option value="flat">Flat, same price every year</option>
+          <option value="step">Step discount (first year +Δ, last year −Δ)</option>
+          <option value="manual">Manual discount per year</option>
         </select>
-      </div>
-    </div>
 
-    <div style="height:12px;"></div>
-
-    <div class="grid2">
-      <div class="span2">
-        <label id="lblListPrice">List Price per License per Year</label>
-        <input id="listPrice" type="text" inputmode="decimal" placeholder="e.g. 1.080,00" value="1.080,00" />
-        <div class="muted">European input supported (e.g. 1.660,50).</div>
-      </div>
-      <div class="span2">
-        <label id="lblTCV">Target TCV Total (After Discount)</label>
-        <input id="tcv" type="text" inputmode="decimal" placeholder="e.g. 24.270,00" value="24.270,00" />
-      </div>
-
-      <div id="frontControls" class="span4" style="display:none;">
-        <div class="grid2">
-          <div>
-            <label>Delta (percentage points)</label>
-            <input id="deltaPP" type="number" step="0.01" value="5" />
+        <div id="ctl-yoy" style="margin-top:10px;">
+          <div class="row2">
+            <div class="field">
+              <label for="increase">Increase per year (%)</label>
+              <input id="increase" type="text" inputmode="decimal" value="6" />
+            </div>
+            <div class="field">
+              <label for="anchor">Target price in</label>
+              <select id="anchor"></select>
+            </div>
           </div>
-          <div class="span2"></div>
-          <div></div>
+          <div class="field">
+            <label>Hitting the target</label>
+            <div class="seg" id="fitSeg">
+              <button data-v="anchor">Anchor year exact</button>
+              <button data-v="fit">TCV exact</button>
+            </div>
+          </div>
+          <div class="hint" id="yoyHint"></div>
         </div>
-        <div class="muted">Front-loaded applies: Year 1 = base + Δ, Last year = base − Δ, middle years = base.</div>
-      </div>
 
-      <div id="customControls" class="span4" style="display:none;">
-        <div class="grid2">
-          <div>
-            <label>Year 1 delta (percentage points)</label>
-            <input id="customFirstPP" type="number" step="0.01" value="5" />
+        <div id="ctl-step" style="margin-top:10px;">
+          <div class="field">
+            <label for="delta">Δ in percentage points</label>
+            <input id="delta" type="text" inputmode="decimal" value="5" />
           </div>
-          <div>
-            <label>Last year delta (percentage points)</label>
-            <input id="customLastPP" type="number" step="0.01" value="-5" />
-          </div>
-          <div class="span2"></div>
+          <div class="hint">Year 1 gets the base discount plus Δ, the last year the base minus Δ. Years in between get the base.</div>
         </div>
-        <div class="muted">Custom applies: Year 1 = base + delta1, Last year = base + deltaLast, middle years = base.</div>
+
+        <div id="ctl-manual" style="margin-top:10px;">
+          <div class="manual-list" id="manualList"></div>
+          <div class="hint">Enter the discount for each year. The target is ignored and TCV follows from your discounts.</div>
+        </div>
       </div>
-    </div>
 
-    <div class="btns">
-      <button id="btnCopyLink">Copy link</button>
-      <button id="btnCopyTable">Copy table</button>
-      <button id="btnExample">Example</button>
-      <button id="btnClear">Clear</button>
-      <button id="btnCSV">Download Excel (CSV)</button>
-      <button id="btnXLSX" title="Creates a real .xlsx (uses an external library).">Download Excel (XLSX)</button>
-    </div>
+      <div class="section">
+        <h2>Rounding</h2>
+        <select id="rounding">
+          <option value="0">Exact (no rounding)</option>
+          <option value="0.01">To the cent</option>
+          <option value="1">Whole amounts</option>
+          <option value="5">To 5</option>
+          <option value="10">To 10</option>
+        </select>
+        <div class="hint">Rounds the net price per license in each year. The discount is recalculated from the rounded price.</div>
+      </div>
+    </aside>
 
-    <div id="toast" class="toast"></div>
-    <div id="messages" class="messages"></div>
+    <!-- ============ RESULTS ============ -->
+    <main class="results">
+      <section class="panel">
+        <div class="print-only" style="font-size:20px;font-weight:600;margin-bottom:6px;">Price proposal</div>
+        <p class="deal-line" id="dealLine"></p>
+        <div class="kpis">
+          <div class="kpi main"><div class="v" id="kTcv">–</div><div class="l">Total contract value</div></div>
+          <div class="kpi"><div class="v" id="kAcv">–</div><div class="l">Average per year</div></div>
+          <div class="kpi"><div class="v" id="kDisc">–</div><div class="l" id="kDiscL">Average discount</div></div>
+        </div>
+        <div class="status no-print" id="status"></div>
+      </section>
+
+      <section class="panel">
+        <div class="head-row">
+          <h2>Year by year</h2>
+          <span class="no-print">Discounts shown to 5 decimals for exact quote entry</span>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th>List / license</th>
+                <th>Discount</th>
+                <th>Net / license</th>
+                <th>Change</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+            <tfoot id="tfoot"></tfoot>
+          </table>
+        </div>
+        <div class="chart" id="chart"></div>
+        <div class="legend"><span><i style="background:var(--accent)"></i>Net total</span><span><i style="background:var(--ghost)"></i>List total</span></div>
+      </section>
+
+      <section class="panel no-print">
+        <div class="head-row">
+          <h2>Compare structures</h2>
+          <span>Same target and rounding. Click a row to switch.</span>
+        </div>
+        <div class="tbl-wrap">
+          <table class="scen">
+            <thead>
+              <tr>
+                <th>Structure</th>
+                <th>Year 1 / license</th>
+                <th>Last year / license</th>
+                <th>Avg discount</th>
+                <th>TCV</th>
+                <th>vs target</th>
+              </tr>
+            </thead>
+            <tbody id="scenBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel no-print">
+        <div class="head-row" style="margin-bottom:12px;">
+          <h2>Share and export</h2>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="btnEmail">Copy for email</button>
+          <button class="btn" id="btnQuote">Copy for quote</button>
+          <button class="btn" id="btnLink">Copy link</button>
+          <button class="btn" id="btnXlsx">Excel</button>
+          <button class="btn" id="btnCsv">CSV</button>
+          <button class="btn" id="btnPrint">Print / PDF</button>
+          <button class="btn" id="btnReset">Reset</button>
+        </div>
+        <label class="check"><input type="checkbox" id="custDisc" /> Show discount column in the email table</label>
+        <div class="hint">Copy for email pastes a clean table into Outlook (Arial 11). Copy for quote gives tab-separated lines with full-precision discounts for Excel or your quote tool.</div>
+      </section>
+    </main>
   </div>
+</div>
+<div class="toast" id="toast"></div>
 
-  <div id="out" class="card"></div>
-
-  <!-- Optional for XLSX export (works only if CDN is allowed) -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 <script>
-  // =========================
-  // Defaults
-  // =========================
-  const EXAMPLE = {
-    product: 'Enterprise Remote Support',
-    currency: 'EUR',
-    listPrice: '1.080,00',
-    quantity: '10',
-    years: '3',
-    tcv: '24.270,00',
-    model: 'frontloaded',
-    deltaPP: '5',
-    customFirstPP: '5',
-    customLastPP: '-5'
+(() => {
+  // ---------- Defaults ----------
+  const DEFAULTS = {
+    product:'Enterprise Remote Support', currency:'EUR', quantity:'10', years:'3',
+    listPrice:'1.080,00', targetMode:'tcv', target:'24.270,00',
+    model:'yoy', increase:'6', anchor:'middle', fit:'anchor', delta:'5',
+    manual:'', rounding:'0', custDisc:'0'
   };
+  const MODEL_NAMES = { yoy:'Yearly increase', flat:'Flat', step:'Step discount', manual:'Manual' };
+  const SYM = { EUR:'€', USD:'$', GBP:'£' };
+  const MAX_YEARS = 10;
 
-  // =========================
-  // Helpers
-  // =========================
-  function clamp(x, min, max){ return Math.max(min, Math.min(max, x)); }
+  const $ = id => document.getElementById(id);
+  let targetMode = 'tcv';
+  let fitMode = 'anchor';
+  let manualVals = [];
 
-  // Build a formatter for the currently selected currency, with NL formatting (1.234,56)
-  function getCurrencyCode(){
-    return document.getElementById('currency').value || 'EUR';
+  // ---------- Number helpers ----------
+  function parseNum(v){
+    if(v === null || v === undefined) return NaN;
+    let s = String(v).replace(/\u00A0/g,'').replace(/[€$£%\s]/g,'').trim();
+    if(!s) return NaN;
+    if(s.includes(',')) s = s.replace(/\./g,'').replace(',', '.');
+    else if(/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g,'');
+    return parseFloat(s);
   }
-  function getMoneyFormatter(){
-    return new Intl.NumberFormat('nl-NL', { style:'currency', currency: getCurrencyCode() });
+  const nf = {};
+  function fmt(n, dec=2){
+    const k = dec;
+    if(!nf[k]) nf[k] = new Intl.NumberFormat('nl-NL',{ minimumFractionDigits:dec, maximumFractionDigits:dec });
+    return nf[k].format(n);
   }
-  function money(n){
-    return getMoneyFormatter().format(n);
+  function money(n){ return (SYM[$('currency').value] || '') + ' ' + fmt(n, 2); }
+  function pct(d, dec=5){ return fmt(d*100, dec) + '%'; }
+  function signedPct(d){ return (d > 0 ? '+' : '') + fmt(d*100, 2) + '%'; }
+  function signedMoney(n){ return (n > 0 ? '+' : n < 0 ? '−' : '') + money(Math.abs(n)); }
+
+  // ---------- UI state ----------
+  function setSeg(segId, val){
+    document.querySelectorAll(`#${segId} button`).forEach(b => b.classList.toggle('on', b.dataset.v === val));
   }
-  function moneyPlain(n){
-    return money(n).replace('\u00A0', ' '); // ensure normal space
+  function yearsVal(){
+    const y = parseInt($('years').value, 10);
+    return isFinite(y) && y > 0 ? Math.min(y, MAX_YEARS) : 0;
   }
-  function moneyNoSymbol(n){
-    // Return "1.080,00" (no currency sign)
-    const s = moneyPlain(n);
-    // Remove any leading currency sign(s) and space; keep the number part.
-    // This is robust for €, $, £ in nl-NL formatting.
-    return s.replace(/^[^\d-]+/,'').trim();
+  function buildAnchor(pending){
+    const sel = $('anchor');
+    const n = yearsVal() || 3;
+    const cur = pending || sel.value || 'middle';
+    let html = `<option value="middle">Middle of term</option>`;
+    for(let y=1; y<=n; y++) html += `<option value="${y}">Year ${y}</option>`;
+    sel.innerHTML = html;
+    const ok = cur === 'middle' || (+cur >= 1 && +cur <= n);
+    sel.value = ok ? cur : 'middle';
   }
-
-  // 0..1 -> "17,07895%"
-  function pct(n){
-    const val = n * 100;
-    return val.toFixed(5).replace('.', ',') + '%';
-  }
-
-  // EU number parsing:
-  // "1.660,50" -> 1660.50
-  // "3690"     -> 3690
-  // "3.690,00" -> 3690
-  // Supports €/$/£
-  function parseEuroNumber(value){
-    if (value === null || value === undefined) return NaN;
-    const s = String(value).trim();
-    if (!s) return NaN;
-
-    const cleaned = s
-      .replace(/\u00A0/g, ' ')
-      .replace(/[€$£]/g, '')
-      .replace(/\s/g, '');
-
-    const normalized = cleaned
-      .replace(/\./g, '')
-      .replace(',', '.');
-
-    return parseFloat(normalized);
-  }
-
-  function toast(msg){
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.style.display = 'block';
-    clearTimeout(window.__toastT);
-    window.__toastT = setTimeout(()=>{ el.style.display='none'; }, 2200);
-  }
-
-  function setDisabled(disabled){
-    document.getElementById('btnCSV').disabled = disabled;
-    document.getElementById('btnXLSX').disabled = disabled;
-    document.getElementById('btnCopyTable').disabled = disabled;
-  }
-
-  function setValue(id, val){ document.getElementById(id).value = val; }
-
-  function showMessages(list){
-    const wrap = document.getElementById('messages');
-    wrap.innerHTML = '';
-    for(const m of list){
-      const div = document.createElement('div');
-      div.className = `msg ${m.type}`;
-      div.textContent = m.text;
-      wrap.appendChild(div);
+  function buildManual(){
+    const n = yearsVal() || 3;
+    const list = $('manualList');
+    const existing = [...list.querySelectorAll('input')].map(i => i.value);
+    if(existing.length) manualVals = existing;
+    while(manualVals.length < n) manualVals.push(manualVals.length ? manualVals[manualVals.length-1] : '20');
+    let html = '';
+    for(let y=1; y<=n; y++){
+      html += `<div><label for="man${y}">Year ${y} (%)</label><input id="man${y}" type="text" inputmode="decimal" value="${manualVals[y-1]}" /></div>`;
     }
+    list.innerHTML = html;
+    list.querySelectorAll('input').forEach(i => i.addEventListener('input', render));
+  }
+  function updateVisibility(){
+    const m = $('model').value;
+    $('ctl-yoy').style.display = m === 'yoy' ? 'block' : 'none';
+    $('ctl-step').style.display = m === 'step' ? 'block' : 'none';
+    $('ctl-manual').style.display = m === 'manual' ? 'block' : 'none';
+    $('target').disabled = m === 'manual';
+    document.querySelectorAll('#targetSeg button').forEach(b => b.disabled = m === 'manual');
+    $('anchor').disabled = fitMode === 'fit';
+  }
+  function updateTargetLabel(){
+    const c = $('currency').value;
+    const map = {
+      tcv:   ['Target total contract value ('+c+')', 'Total for all years, after discount.'],
+      price: ['Target average net price per license per year ('+c+')', 'The average price you agreed per license per year.'],
+      disc:  ['Target average discount (%)', 'Average discount over the full term.']
+    };
+    $('targetLabel').textContent = map[targetMode][0];
+    $('targetHint').textContent = $('model').value === 'manual' ? 'Not used with manual discounts.' : map[targetMode][1];
+    $('yoyHint').textContent = fitMode === 'anchor'
+      ? 'The chosen year gets the target price exactly. Other years step down or up by the increase, so TCV moves slightly.'
+      : 'Scales all years so TCV hits the target exactly, keeping the yearly increase. The anchor year does not matter here.';
   }
 
-  // =========================
-  // Discount model UI
-  // =========================
-  function updateModelUI(){
-    const model = document.getElementById('model').value;
-    document.getElementById('frontControls').style.display = (model === 'frontloaded') ? 'block' : 'none';
-    document.getElementById('customControls').style.display = (model === 'custom') ? 'block' : 'none';
-  }
-
-  function updateCurrencyLabels(){
-    const code = getCurrencyCode();
-    document.getElementById('lblListPrice').textContent = `List Price per License per Year (${code})`;
-    document.getElementById('lblTCV').textContent = `Target TCV Total (After Discount) (${code})`;
-  }
-
-  // =========================
-  // Inputs & validation
-  // =========================
-  function getInputs(){
-    const product = document.getElementById('product').value.trim();
-    const listPriceRaw = document.getElementById('listPrice').value;
-    const tcvRaw = document.getElementById('tcv').value;
-
+  // ---------- Read inputs ----------
+  function readState(){
+    const n = yearsVal();
     return {
-      productRaw: product,
-      listPriceRaw,
-      tcvRaw,
-      currency: getCurrencyCode(),
-      product: product || '—',
-      quantity: parseInt(document.getElementById('quantity').value, 10),
-      years: parseInt(document.getElementById('years').value, 10),
-      listPrice: parseEuroNumber(listPriceRaw),
-      tcv: parseEuroNumber(tcvRaw),
-      model: document.getElementById('model').value,
-      deltaPP: parseFloat(document.getElementById('deltaPP').value),
-      customFirstPP: parseFloat(document.getElementById('customFirstPP').value),
-      customLastPP: parseFloat(document.getElementById('customLastPP').value)
+      product: $('product').value.trim(),
+      currency: $('currency').value,
+      qty: parseInt($('quantity').value, 10),
+      years: n,
+      list: parseNum($('listPrice').value),
+      targetMode,
+      target: parseNum($('target').value),
+      model: $('model').value,
+      increase: parseNum($('increase').value),
+      anchor: $('anchor').value || 'middle',
+      fit: fitMode,
+      delta: parseNum($('delta').value),
+      manual: [...$('manualList').querySelectorAll('input')].map(i => parseNum(i.value)),
+      rounding: parseFloat($('rounding').value) || 0,
+      custDisc: $('custDisc').checked
     };
   }
 
-  function isValidNumber(x){ return typeof x === 'number' && isFinite(x); }
-
-  function validate(state){
-    const msgs = [];
-    const errors = [];
-
-    if(!state.productRaw) errors.push('Product is required.');
-    if(!isValidNumber(state.quantity) || state.quantity <= 0) errors.push('Quantity must be > 0.');
-    if(!isValidNumber(state.years) || state.years <= 0) errors.push('Duration (Years) must be > 0.');
-    if(!isValidNumber(state.listPrice) || state.listPrice <= 0) errors.push('List Price must be a valid amount > 0 (e.g. 1.080,00).');
-    if(!isValidNumber(state.tcv) || state.tcv <= 0) errors.push('Target TCV must be a valid amount > 0 (e.g. 24.270,00).');
-
-    if(state.model === 'frontloaded'){
-      if(!isValidNumber(state.deltaPP)) errors.push('Delta (pp) must be a number.');
-    }
-    if(state.model === 'custom'){
-      if(!isValidNumber(state.customFirstPP)) errors.push('Year 1 delta (pp) must be a number.');
-      if(!isValidNumber(state.customLastPP)) errors.push('Last year delta (pp) must be a number.');
-    }
-
-    if(errors.length){
-      msgs.push({ type:'err', text: errors[0] });
-      return { ok:false, msgs };
-    }
-    return { ok:true, msgs };
+  function validate(s){
+    if(!(s.qty > 0)) return 'Enter the number of licenses.';
+    if(!(s.years > 0)) return `Enter a term between 1 and ${MAX_YEARS} years.`;
+    if(!(s.list > 0)) return 'Enter the list price per license per year.';
+    if(s.model !== 'manual' && !(s.target > 0)) return 'Enter a target.';
+    if(s.model === 'yoy' && !(s.increase > -100)) return 'Enter the yearly increase in %.';
+    if(s.model === 'step' && !isFinite(s.delta)) return 'Enter Δ in percentage points.';
+    if(s.model === 'manual' && s.manual.some(v => !isFinite(v))) return 'Enter a discount for every year.';
+    return null;
   }
 
-  // =========================
-  // Shareable link
-  // =========================
-  function setUrlParams(state){
-    const url = new URL(window.location.href);
-    url.searchParams.set('product', state.productRaw);
-    url.searchParams.set('currency', state.currency);
-    url.searchParams.set('quantity', String(state.quantity));
-    url.searchParams.set('years', String(state.years));
-    url.searchParams.set('listPrice', state.listPriceRaw);
-    url.searchParams.set('tcv', state.tcvRaw);
-    url.searchParams.set('model', state.model);
-    url.searchParams.set('deltaPP', String(document.getElementById('deltaPP').value ?? ''));
-    url.searchParams.set('customFirstPP', String(document.getElementById('customFirstPP').value ?? ''));
-    url.searchParams.set('customLastPP', String(document.getElementById('customLastPP').value ?? ''));
-    window.history.replaceState({}, '', url.toString());
+  // ---------- Core calculation ----------
+  function targetTCV(s){
+    const listTotal = s.list * s.qty * s.years;
+    if(s.targetMode === 'price') return s.target * s.qty * s.years;
+    if(s.targetMode === 'disc') return listTotal * (1 - s.target / 100);
+    return s.target;
   }
 
-  function clearUrlParams(){
-    const url = new URL(window.location.href);
-    url.search = '';
-    window.history.replaceState({}, '', url.toString());
-  }
-
-  function loadFromUrl(){
-    const url = new URL(window.location.href);
-    const p = url.searchParams;
-
-    if(p.has('product')) setValue('product', p.get('product'));
-    if(p.has('currency')) setValue('currency', p.get('currency'));
-    if(p.has('quantity')) setValue('quantity', p.get('quantity'));
-    if(p.has('years')) setValue('years', p.get('years'));
-    if(p.has('listPrice')) setValue('listPrice', p.get('listPrice'));
-    if(p.has('tcv')) setValue('tcv', p.get('tcv'));
-    if(p.has('model')) setValue('model', p.get('model'));
-    if(p.has('deltaPP')) setValue('deltaPP', p.get('deltaPP'));
-    if(p.has('customFirstPP')) setValue('customFirstPP', p.get('customFirstPP'));
-    if(p.has('customLastPP')) setValue('customLastPP', p.get('customLastPP'));
-  }
-
-  // =========================
-  // Core calculation
-  // =========================
-  function buildDiscounts(baseDiscount, years, model, state){
-    const discounts = new Array(years).fill(baseDiscount);
-    let msgs = [];
-    let clamped = false;
-
-    if(years <= 1) return { discounts, msgs };
+  function compute(s, model){
+    model = model || s.model;
+    const n = s.years, q = s.qty, L = s.list;
+    const listTotal = L * q * n;
+    const T = targetTCV(s);
+    let nets = [];
 
     if(model === 'flat'){
-      return { discounts, msgs };
-    }
-
-    if(model === 'frontloaded'){
-      const delta = (isValidNumber(state.deltaPP) ? state.deltaPP : 0) / 100;
-      discounts[0] = baseDiscount + delta;
-      discounts[years-1] = baseDiscount - delta;
-    }
-
-    if(model === 'custom'){
-      const d1 = (isValidNumber(state.customFirstPP) ? state.customFirstPP : 0) / 100;
-      const dl = (isValidNumber(state.customLastPP) ? state.customLastPP : 0) / 100;
-      discounts[0] = baseDiscount + d1;
-      discounts[years-1] = baseDiscount + dl;
-    }
-
-    for(let i=0;i<discounts.length;i++){
-      const before = discounts[i];
-      discounts[i] = clamp(discounts[i], 0, 1);
-      if(discounts[i] !== before) clamped = true;
-    }
-    if(clamped){
-      msgs.push({ type:'warn', text:'Some year discounts were clamped to stay between 0% and 100%.' });
-    }
-    return { discounts, msgs };
-  }
-
-  function compute(state){
-    const msgs = [];
-
-    const listTotal = state.listPrice * state.quantity * state.years;
-
-    if(state.tcv > listTotal){
-      msgs.push({ type:'warn', text:'Target TCV exceeds List Total. Resulting discount would be negative; discounts are clamped to a minimum of 0%.' });
-    }
-
-    let baseDiscount = 1 - (state.tcv / listTotal);
-    const rawBase = baseDiscount;
-    baseDiscount = clamp(baseDiscount, 0, 1);
-    if(baseDiscount !== rawBase){
-      msgs.push({ type:'warn', text:'Base discount was clamped to stay between 0% and 100%.' });
-    }
-
-    if(baseDiscount > 0.95){
-      msgs.push({ type:'warn', text:'Base discount is unusually high (>95%). Double-check inputs.' });
-    }
-
-    const { discounts, msgs: dmsgs } = buildDiscounts(baseDiscount, state.years, state.model, state);
-    msgs.push(...dmsgs);
-
-    const rows = [];
-    let sumNet = 0;
-
-    for(let y=1; y<=state.years; y++){
-      const d = discounts[y-1];
-      const discountedPerLicense = state.listPrice * (1 - d);
-      const totalPrice = discountedPerLicense * state.quantity;
-      sumNet += totalPrice;
-
-      rows.push({
-        Product: state.product,
-        Quantity: state.quantity,
-        "Duration (Years)": state.years,
-        Year: y,
-        "List Price per License": state.listPrice,
-        "Discount (%)": d,
-        "Discounted Price per License": discountedPerLicense,
-        "Total Price": totalPrice
-      });
-    }
-
-    const diff = Math.abs(sumNet - state.tcv);
-    if(diff > 0.01){
-      msgs.push({ type:'warn', text:`Sum of yearly lines differs from Target TCV by ${moneyPlain(diff)}.` });
+      nets = Array(n).fill(T / (q * n));
+    } else if(model === 'yoy'){
+      const r = s.increase / 100;
+      const a = s.anchor === 'middle' ? (n + 1) / 2 : Math.min(Math.max(parseInt(s.anchor,10) || 1, 1), n);
+      const f = []; for(let y=1; y<=n; y++) f.push(Math.pow(1 + r, y - a));
+      const base = s.fit === 'fit' ? (T / q) / f.reduce((x,z)=>x+z, 0) : T / (q * n);
+      nets = f.map(x => base * x);
+    } else if(model === 'step'){
+      const b = 1 - T / listTotal, d = (s.delta || 0) / 100;
+      const disc = Array(n).fill(b);
+      if(n > 1){ disc[0] = b + d; disc[n-1] = b - d; }
+      nets = disc.map(x => L * (1 - x));
     } else {
-      msgs.push({ type:'ok', text:'Check passed: Sum of yearly lines matches Target TCV (within rounding).' });
+      nets = s.manual.slice(0, n).map(x => L * (1 - x / 100));
     }
 
-    return { rows, listTotal, baseDiscount, sumNet, msgs };
-  }
+    if(s.rounding > 0) nets = nets.map(v => Math.round(v / s.rounding) * s.rounding);
 
-  // =========================
-  // Rendering
-  // =========================
-  function render(){
-    updateCurrencyLabels();
-    updateModelUI();
-
-    const state = getInputs();
-    setUrlParams(state);
-
-    const out = document.getElementById('out');
-    const v = validate(state);
-
-    if(!v.ok){
-      setDisabled(true);
-      showMessages(v.msgs);
-      out.innerHTML = `<div class="muted">Enter all required values to see results.</div>`;
-      return;
-    }
-
-    const result = compute(state);
-    showMessages(result.msgs);
-    setDisabled(false);
-
-    const code = state.currency;
-
-    out.innerHTML = `
-      <div class="row"><div>List Total (${code})</div><div><b>${moneyPlain(result.listTotal)}</b></div></div>
-      <div class="row"><div>Target TCV (After Discount) (${code})</div><div><b>${moneyPlain(state.tcv)}</b></div></div>
-      <div class="row"><div>Base Discount</div><div><b>${pct(result.baseDiscount)}</b></div></div>
-      <div class="row"><div>Sum of Year Lines (${code})</div><div><b>${moneyPlain(result.sumNet)}</b></div></div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Product</th>
-            <th>Quantity</th>
-            <th>Duration (Years)</th>
-            <th>Year</th>
-            <th>List Price per License (${code})</th>
-            <th>Discount (%)</th>
-            <th>Discounted Price per License (${code})</th>
-            <th class="total">Total Price (${code})</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${result.rows.map(r => `
-            <tr>
-              <td>${r["Product"]}</td>
-              <td>${r["Quantity"]}</td>
-              <td>${r["Duration (Years)"]}</td>
-              <td>${r["Year"]}</td>
-              <td>${moneyPlain(r["List Price per License"])}</td>
-              <td>${pct(r["Discount (%)"])}</td>
-              <td>${moneyPlain(r["Discounted Price per License"])}</td>
-              <td class="total">${moneyPlain(r["Total Price"])}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
-  }
-
-  // =========================
-  // Exports
-  // =========================
-  function downloadBlob(filename, mime, content){
-    const blob = new Blob([content], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  function exportCSV(){
-    const state = getInputs();
-    const v = validate(state);
-    if(!v.ok){ toast('Please fill all required fields first.'); return; }
-
-    const result = compute(state);
-    const rows = result.rows;
-    const code = state.currency;
-
-    const headers = [
-      "Product","Quantity","Duration (Years)","Year",
-      `List Price per License (${code})`,"Discount (%)",
-      `Discounted Price per License (${code})`, `Total Price (${code})`
-    ];
-
-    const sep = ';';
-    const lines = [];
-    lines.push(headers.join(sep));
-
-    for(const r of rows){
-      const line = [
-        r["Product"],
-        r["Quantity"],
-        r["Duration (Years)"],
-        r["Year"],
-        moneyPlain(r["List Price per License"]),
-        pct(r["Discount (%)"]),
-        moneyPlain(r["Discounted Price per License"]),
-        moneyPlain(r["Total Price"])
-      ].map(v => {
-        const s = String(v);
-        if(s.includes('"') || s.includes('\n') || s.includes(sep)) return `"${s.replaceAll('"','""')}"`;
-        return s;
-      }).join(sep);
-      lines.push(line);
-    }
-
-    const csv = "\uFEFF" + lines.join("\n");
-    downloadBlob("discount-calculator.csv", "text/csv;charset=utf-8", csv);
-  }
-
-  function exportXLSX(){
-    if(typeof XLSX === 'undefined'){
-      toast('XLSX library not loaded (CDN blocked). Use CSV export.');
-      return;
-    }
-    const state = getInputs();
-    const v = validate(state);
-    if(!v.ok){ toast('Please fill all required fields first.'); return; }
-
-    const result = compute(state);
-    const code = state.currency;
-
-    const rows = result.rows.map(r => ({
-      "Product": r["Product"],
-      "Quantity": r["Quantity"],
-      "Duration (Years)": r["Duration (Years)"],
-      "Year": r["Year"],
-      [`List Price per License (${code})`]: moneyPlain(r["List Price per License"]),
-      "Discount (%)": pct(r["Discount (%)"]),
-      [`Discounted Price per License (${code})`]: moneyPlain(r["Discounted Price per License"]),
-      [`Total Price (${code})`]: moneyPlain(r["Total Price"]),
+    const rows = nets.map((net, i) => ({
+      year: i + 1,
+      list: L,
+      disc: 1 - net / L,
+      net,
+      change: i === 0 ? null : (nets[i-1] !== 0 ? net / nets[i-1] - 1 : null),
+      total: net * q
     }));
+    const tcv = rows.reduce((x, r) => x + r.total, 0);
+    return { rows, tcv, target: T, listTotal, acv: tcv / n, avgDisc: 1 - tcv / listTotal, model };
+  }
 
-    const ws = XLSX.utils.json_to_sheet(rows, { header: Object.keys(rows[0]) });
+  // ---------- Rendering ----------
+  function render(){
+    updateVisibility();
+    updateTargetLabel();
+    const s = readState();
+    syncUrl(s);
+
+    const err = validate(s);
+    const st = $('status');
+    if(err){
+      st.className = 'status err'; st.innerHTML = `<div>${err}</div>`;
+      ['kTcv','kAcv','kDisc'].forEach(id => $(id).textContent = '–');
+      $('tbody').innerHTML = ''; $('tfoot').innerHTML = ''; $('chart').innerHTML = ''; $('scenBody').innerHTML = '';
+      $('dealLine').innerHTML = '';
+      return;
+    }
+
+    const r = compute(s);
+    window.__result = { s, r };
+
+    $('dealLine').innerHTML = `<b>${esc(s.qty)} × ${esc(s.product || 'Product')}</b>, ${s.years} ${s.years === 1 ? 'year' : 'years'}, list ${money(s.list)} per license per year`;
+    $('kTcv').textContent = money(r.tcv);
+    $('kAcv').textContent = money(r.acv);
+    $('kDisc').textContent = fmt(r.avgDisc * 100, 2) + '%';
+    $('kDiscL').textContent = `Average discount, saves ${money(r.listTotal - r.tcv)} vs list`;
+
+    // status
+    const msgs = []; let level = 'ok';
+    const diff = r.tcv - r.target;
+    if(s.model === 'manual'){
+      msgs.push('TCV follows from the manual discounts.');
+    } else if(Math.abs(diff) < 0.005){
+      msgs.push('Year lines add up exactly to the target.');
+    } else {
+      level = 'warn';
+      const why = s.model === 'yoy' && s.fit === 'anchor' ? 'because the price is anchored on one year' : 'because of rounding';
+      msgs.push(`TCV is ${money(Math.abs(diff))} ${diff > 0 ? 'above' : 'below'} the target of ${money(r.target)}, ${why}.`);
+    }
+    const above = r.rows.filter(x => x.disc < -1e-9).map(x => x.year);
+    if(above.length){ level = 'warn'; msgs.push(`Year ${above.join(', ')} is above list price.`); }
+    const negative = r.rows.filter(x => x.net < 0).map(x => x.year);
+    if(negative.length){ level = 'err'; msgs.push(`Year ${negative.join(', ')} has a negative price. Check the inputs.`); }
+    st.className = 'status ' + level;
+    st.innerHTML = msgs.map(m => `<div>${m}</div>`).join('');
+
+    // table
+    $('tbody').innerHTML = r.rows.map(x => `
+      <tr>
+        <td>Year ${x.year}</td>
+        <td>${money(x.list)}</td>
+        <td class="${x.disc < -1e-9 ? 'neg' : ''}">${pct(x.disc)}</td>
+        <td>${money(x.net)}</td>
+        <td class="${x.change === null ? '' : x.change > 1e-9 ? 'up' : x.change < -1e-9 ? 'down' : ''}">${x.change === null ? '–' : signedPct(x.change)}</td>
+        <td>${money(x.total)}</td>
+      </tr>`).join('');
+    $('tfoot').innerHTML = `
+      <tr>
+        <td>Total</td>
+        <td>${money(r.listTotal / s.qty)}</td>
+        <td>${pct(r.avgDisc)}</td>
+        <td>${money(r.tcv / s.qty)}</td>
+        <td></td>
+        <td>${money(r.tcv)}</td>
+      </tr>`;
+
+    renderChart(r, s);
+    renderScenarios(s);
+  }
+
+  function renderChart(r, s){
+    const W = 640, H = 220, padL = 8, padR = 8, padT = 26, padB = 28;
+    const n = r.rows.length;
+    const max = Math.max(s.list * s.qty, ...r.rows.map(x => x.total)) || 1;
+    const slot = (W - padL - padR) / n;
+    const bw = Math.min(70, slot * 0.6);
+    const h = v => Math.max(0, (v / max) * (H - padT - padB));
+    let g = '';
+    r.rows.forEach((x, i) => {
+      const cx = padL + slot * i + slot / 2;
+      const lh = h(s.list * s.qty), nh = h(x.total);
+      g += `<rect x="${cx - bw/2}" y="${H - padB - lh}" width="${bw}" height="${lh}" rx="4" fill="var(--ghost)"/>`;
+      g += `<rect x="${cx - bw/2}" y="${H - padB - nh}" width="${bw}" height="${nh}" rx="4" fill="var(--accent)"/>`;
+      g += `<text x="${cx}" y="${H - padB - nh - 7}" text-anchor="middle" font-size="12" font-family="var(--mono)" fill="var(--ink)">${fmt(x.total, 0)}</text>`;
+      g += `<text x="${cx}" y="${H - 8}" text-anchor="middle" font-size="12" fill="var(--muted)">Year ${x.year}</text>`;
+    });
+    $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Net total per year compared with list">${g}</svg>`;
+  }
+
+  function renderScenarios(s){
+    const models = ['flat', 'yoy', 'step'];
+    if(s.model === 'manual') models.push('manual');
+    $('scenBody').innerHTML = models.map(m => {
+      const v = validate({ ...s, model:m });
+      if(v) return '';
+      const r = compute(s, m);
+      const first = r.rows[0].net, last = r.rows[r.rows.length - 1].net;
+      const d = r.tcv - r.target;
+      let label = MODEL_NAMES[m];
+      if(m === 'yoy') label += ` ${fmt(s.increase, s.increase % 1 ? 1 : 0)}%`;
+      if(m === 'step') label += ` ±${fmt(s.delta || 0, (s.delta || 0) % 1 ? 1 : 0)} pp`;
+      return `<tr data-m="${m}" class="${m === s.model ? 'cur' : ''}">
+        <td>${label}</td>
+        <td>${money(first)}</td>
+        <td>${money(last)}</td>
+        <td>${fmt(r.avgDisc * 100, 2)}%</td>
+        <td>${money(r.tcv)}</td>
+        <td>${m === 'manual' ? '–' : Math.abs(d) < 0.005 ? 'exact' : signedMoney(d)}</td>
+      </tr>`;
+    }).join('');
+    $('scenBody').querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => {
+      $('model').value = tr.dataset.m; render();
+    }));
+  }
+
+  function esc(v){ return String(v).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  // ---------- URL ----------
+  const FALLBACK_URL = 'https://lennaaart.github.io/splashtop-discount-calculator/';
+  let shareUrl = '';
+  function baseUrl(){
+    return /^https?:$/.test(location.protocol) ? location.origin + location.pathname : FALLBACK_URL;
+  }
+  function syncUrl(s){
+    const u = new URL(baseUrl());
+    const p = u.searchParams;
+    const set = (k, v) => p.set(k, v);
+    [...p.keys()].forEach(k => p.delete(k));
+    set('product', $('product').value);
+    set('currency', s.currency);
+    set('quantity', $('quantity').value);
+    set('years', $('years').value);
+    set('listPrice', $('listPrice').value);
+    set('targetMode', targetMode);
+    set('target', $('target').value);
+    set('model', s.model);
+    if(s.model === 'yoy'){ set('increase', $('increase').value); set('anchor', s.anchor); set('fit', fitMode); }
+    if(s.model === 'step') set('delta', $('delta').value);
+    if(s.model === 'manual') set('manual', [...$('manualList').querySelectorAll('input')].map(i => i.value).join('|'));
+    set('rounding', $('rounding').value);
+    if(s.custDisc) set('custDisc', '1');
+    shareUrl = u.toString();
+    // Some previews (sandboxed frames) don't allow changing the address bar. The share link still works.
+    try{ if(/^https?:$/.test(location.protocol)) history.replaceState(null, '', shareUrl); } catch(e){}
+  }
+
+  function loadState(){
+    let p;
+    try{ p = new URL(location.href).searchParams; } catch(e){ p = new URLSearchParams(location.search); }
+    const g = (k, ...old) => { for(const key of [k, ...old]) if(p.has(key)) return p.get(key); return null; };
+    const v = { ...DEFAULTS };
+    const map = {
+      product:['product'], currency:['currency'], quantity:['quantity'], years:['years'], listPrice:['listPrice'],
+      targetMode:['targetMode'], target:['target','tcv'], model:['model'], increase:['increase','incPct'],
+      anchor:['anchor'], fit:['fit','escMode'], delta:['delta','deltaPP'], manual:['manual'],
+      rounding:['rounding'], custDisc:['custDisc']
+    };
+    for(const k in map){ const x = g(...map[k]); if(x !== null) v[k] = x; }
+    // links from the old calculator
+    if(v.model === 'escalation') v.model = 'yoy';
+    if(v.model === 'frontloaded' || v.model === 'custom') v.model = 'step';
+    if(!['yoy','flat','step','manual'].includes(v.model)) v.model = 'yoy';
+    if(!['tcv','price','disc'].includes(v.targetMode)) v.targetMode = 'tcv';
+    if(!['anchor','fit'].includes(v.fit)) v.fit = 'anchor';
+    applyState(v);
+  }
+
+  function applyState(v){
+    $('product').value = v.product;
+    $('currency').value = SYM[v.currency] ? v.currency : 'EUR';
+    $('quantity').value = v.quantity;
+    $('years').value = v.years;
+    $('listPrice').value = v.listPrice;
+    targetMode = v.targetMode; setSeg('targetSeg', targetMode);
+    $('target').value = v.target;
+    $('model').value = v.model;
+    $('increase').value = v.increase;
+    fitMode = v.fit; setSeg('fitSeg', fitMode);
+    $('delta').value = v.delta;
+    $('rounding').value = ['0','0.01','1','5','10'].includes(String(v.rounding)) ? String(v.rounding) : '0';
+    $('custDisc').checked = v.custDisc === '1';
+    manualVals = v.manual ? v.manual.split('|') : [];
+    $('manualList').innerHTML = '';
+    buildAnchor(v.anchor);
+    buildManual();
+  }
+
+  // ---------- Exports ----------
+  function toast(msg){
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(window.__t); window.__t = setTimeout(() => t.classList.remove('show'), 2000);
+  }
+  function current(){
+    const s = readState();
+    if(validate(s)){ toast('Fill in all fields first.'); return null; }
+    return { s, r: compute(s) };
+  }
+
+  async function copyEmail(){
+    const c = current(); if(!c) return;
+    const { s, r } = c;
+    const showD = s.custDisc;
+    const cell = 'padding:4px 12px;border-bottom:1px solid #d9d9d9;';
+    const th = `style="${cell}text-align:right;font-weight:bold;"`;
+    const thL = `style="${cell}text-align:left;font-weight:bold;"`;
+    const td = `style="${cell}text-align:right;"`;
+    const tdL = `style="${cell}text-align:left;"`;
+    let html = `<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:11pt;">`;
+    html += `<tr><th ${thL}>Year</th><th ${th}>Licenses</th>${showD ? `<th ${th}>Discount</th>` : ''}<th ${th}>Price per license</th><th ${th}>Total per year</th></tr>`;
+    const lines = [['Year','Licenses', ...(showD ? ['Discount'] : []), 'Price per license','Total per year'].join('\t')];
+    r.rows.forEach(x => {
+      html += `<tr><td ${tdL}>Year ${x.year}</td><td ${td}>${s.qty}</td>${showD ? `<td ${td}>${fmt(x.disc*100,2)}%</td>` : ''}<td ${td}>${money(x.net)}</td><td ${td}>${money(x.total)}</td></tr>`;
+      lines.push([`Year ${x.year}`, s.qty, ...(showD ? [fmt(x.disc*100,2)+'%'] : []), money(x.net), money(x.total)].join('\t'));
+    });
+    const span = showD ? 4 : 3;
+    html += `<tr><td ${tdL} colspan="${span}"><b>Total contract value</b></td><td ${td}><b>${money(r.tcv)}</b></td></tr></table>`;
+    lines.push(['Total contract value', ...Array(span - 1).fill(''), money(r.tcv)].join('\t'));
+    const text = lines.join('\n');
+    try{
+      if(window.ClipboardItem){
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html': new Blob([html], { type:'text/html' }),
+          'text/plain': new Blob([text], { type:'text/plain' })
+        })]);
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+      toast('Copied. Paste into your email.');
+    } catch(e){ toast('Copy failed. Try again or use Excel.'); }
+  }
+
+  function quoteRows(s, r){
+    const c = s.currency;
+    const head = ['Product','Licenses','Year',`List price per license (${c})`,'Discount (%)',`Net price per license (${c})`,`Total (${c})`];
+    const body = r.rows.map(x => [s.product, s.qty, x.year, fmt(x.list,2), fmt(x.disc*100,5), fmt(x.net,2), fmt(x.total,2)]);
+    return { head, body };
+  }
+
+  async function copyQuote(){
+    const c = current(); if(!c) return;
+    const { head, body } = quoteRows(c.s, c.r);
+    try{
+      await navigator.clipboard.writeText([head, ...body].map(r => r.join('\t')).join('\n'));
+      toast('Copied. Paste into Excel or your quote.');
+    } catch(e){ toast('Copy failed.'); }
+  }
+
+  function download(name, mime, content){
+    const url = URL.createObjectURL(new Blob([content], { type:mime }));
+    const a = document.createElement('a'); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+  function fileBase(s){
+    return (s.product || 'pricing').replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-').toLowerCase() + `-${s.qty}x-${s.years}y`;
+  }
+
+  function exportCsv(){
+    const c = current(); if(!c) return;
+    const { head, body } = quoteRows(c.s, c.r);
+    const q = v => { const t = String(v); return /[;"\n]/.test(t) ? `"${t.replace(/"/g,'""')}"` : t; };
+    const csv = '\uFEFF' + [head, ...body, ['Total','','','', fmt(c.r.avgDisc*100,5), '', fmt(c.r.tcv,2)]].map(r => r.map(q).join(';')).join('\n');
+    download(fileBase(c.s) + '.csv', 'text/csv;charset=utf-8', csv);
+  }
+
+  function exportXlsx(){
+    const c = current(); if(!c) return;
+    if(typeof XLSX === 'undefined'){ toast('Excel library not loaded. Use CSV.'); return; }
+    const { s, r } = c, cur = s.currency;
+    const aoa = [['Product','Licenses','Year',`List price per license (${cur})`,'Discount',`Net price per license (${cur})`,`Total (${cur})`]];
+    r.rows.forEach(x => aoa.push([s.product, s.qty, x.year, x.list, x.disc, x.net, x.total]));
+    aoa.push(['Total','','','', r.avgDisc, '', r.tcv]);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for(let R = 1; R <= range.e.r; R++){
+      [3,5,6].forEach(C => { const a = XLSX.utils.encode_cell({r:R,c:C}); if(ws[a] && typeof ws[a].v === 'number') ws[a].z = '#,##0.00'; });
+      const d = XLSX.utils.encode_cell({r:R,c:4}); if(ws[d] && typeof ws[d].v === 'number') ws[d].z = '0.00000%';
+    }
+    ws['!cols'] = [{wch:30},{wch:9},{wch:6},{wch:24},{wch:12},{wch:24},{wch:16}];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Pricing");
-    XLSX.writeFile(wb, "discount-calculator.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, 'Pricing');
+    XLSX.writeFile(wb, fileBase(s) + '.xlsx');
   }
 
-  // =========================
-  // Copy table (TSV)
-  // =========================
-  async function copyTableTSV(){
-    const state = getInputs();
-    const v = validate(state);
-    if(!v.ok){ toast('Please fill all required fields first.'); return; }
-
-    const result = compute(state);
-    const rows = result.rows;
-    const code = state.currency;
-
-    const headers = [
-      "Product","Quantity","Duration (Years)","Year",
-      `List Price per License (${code})`,"Discount (%)",
-      `Discounted Price per License (${code})`, `Total Price (${code})`
-    ];
-
-    const lines = [];
-    lines.push(headers.join('\t'));
-
-    for(const r of rows){
-      lines.push([
-        r["Product"],
-        r["Quantity"],
-        r["Duration (Years)"],
-        r["Year"],
-        moneyPlain(r["List Price per License"]),
-        pct(r["Discount (%)"]),
-        moneyPlain(r["Discounted Price per License"]),
-        moneyPlain(r["Total Price"])
-      ].join('\t'));
-    }
-
-    try{
-      await navigator.clipboard.writeText(lines.join('\n'));
-      toast('Table copied (paste into Excel / Google Sheets).');
-    } catch(e){
-      toast('Copy failed (permissions). Use CSV download instead.');
-    }
-  }
-
-  // =========================
-  // Money input formatting on blur (EU style, no symbol)
-  // =========================
-  function formatMoneyInputOnBlur(id){
-    const el = document.getElementById(id);
-    const raw = el.value;
-    if(!raw.trim()) return;
-
-    const n = parseEuroNumber(raw);
-    if(!isFinite(n)) return;
-
-    el.value = moneyNoSymbol(n); // formats using selected currency, but we strip symbol
-  }
-
-  // =========================
-  // Buttons
-  // =========================
-  document.getElementById('btnCopyLink').addEventListener('click', async () => {
-    try{
-      setUrlParams(getInputs());
-      await navigator.clipboard.writeText(window.location.href);
-      toast('Link copied.');
-    } catch(e){
-      toast('Copy failed. Please copy the URL manually.');
-    }
-  });
-
-  document.getElementById('btnCopyTable').addEventListener('click', copyTableTSV);
-
-  document.getElementById('btnExample').addEventListener('click', () => {
-    setValue('product', EXAMPLE.product);
-    setValue('currency', EXAMPLE.currency);
-    setValue('listPrice', EXAMPLE.listPrice);
-    setValue('quantity', EXAMPLE.quantity);
-    setValue('years', EXAMPLE.years);
-    setValue('tcv', EXAMPLE.tcv);
-    setValue('model', EXAMPLE.model);
-    setValue('deltaPP', EXAMPLE.deltaPP);
-    setValue('customFirstPP', EXAMPLE.customFirstPP);
-    setValue('customLastPP', EXAMPLE.customLastPP);
-    updateCurrencyLabels();
-    updateModelUI();
+  // ---------- Events ----------
+  ['product','quantity','years','listPrice','target','increase','delta'].forEach(id => $(id).addEventListener('input', () => {
+    if(id === 'years'){ buildAnchor(); buildManual(); }
     render();
-    toast('Example loaded.');
-  });
+  }));
+  ['currency','model','anchor','rounding','custDisc'].forEach(id => $(id).addEventListener('change', render));
 
-  document.getElementById('btnClear').addEventListener('click', () => {
-    setValue('product', '');
-    setValue('listPrice', '');
-    setValue('quantity', '');
-    setValue('years', '');
-    setValue('tcv', '');
-    clearUrlParams();
-    updateCurrencyLabels();
-    updateModelUI();
+  document.querySelectorAll('#targetSeg button').forEach(b => b.addEventListener('click', () => {
+    if(b.dataset.v === targetMode) return;
+    // convert the current target into the new mode so the numbers stay the same
+    const s = readState();
+    let T = NaN;
+    if(s.qty > 0 && s.years > 0 && s.list > 0 && s.target > 0) T = targetTCV(s);
+    targetMode = b.dataset.v; setSeg('targetSeg', targetMode);
+    if(isFinite(T)){
+      const listTotal = s.list * s.qty * s.years;
+      if(targetMode === 'tcv') $('target').value = fmt(T, 2);
+      if(targetMode === 'price') $('target').value = fmt(T / (s.qty * s.years), 2);
+      if(targetMode === 'disc') $('target').value = fmt((1 - T / listTotal) * 100, 5);
+    }
     render();
-    toast('Cleared.');
+  }));
+  document.querySelectorAll('#fitSeg button').forEach(b => b.addEventListener('click', () => {
+    fitMode = b.dataset.v; setSeg('fitSeg', fitMode); render();
+  }));
+
+  // tidy money fields on blur
+  ['listPrice','target'].forEach(id => $(id).addEventListener('blur', () => {
+    if(id === 'target' && targetMode === 'disc') return;
+    const n = parseNum($(id).value);
+    if(isFinite(n)) $(id).value = fmt(n, 2);
+  }));
+
+  $('btnEmail').addEventListener('click', copyEmail);
+  $('btnQuote').addEventListener('click', copyQuote);
+  $('btnLink').addEventListener('click', async () => {
+    try{ await navigator.clipboard.writeText(shareUrl || location.href); toast('Link copied.'); }
+    catch(e){ toast('Copy failed. Copy the address bar instead.'); }
   });
+  $('btnCsv').addEventListener('click', exportCsv);
+  $('btnXlsx').addEventListener('click', exportXlsx);
+  $('btnPrint').addEventListener('click', () => window.print());
+  $('btnReset').addEventListener('click', () => { applyState({ ...DEFAULTS }); render(); toast('Reset to example.'); });
 
-  document.getElementById('btnCSV').addEventListener('click', exportCSV);
-  document.getElementById('btnXLSX').addEventListener('click', exportXLSX);
-
-  // Live updates
-  ['product','currency','quantity','years','listPrice','tcv','model','deltaPP','customFirstPP','customLastPP'].forEach(id => {
-    document.getElementById(id).addEventListener('input', render);
-  });
-  document.getElementById('model').addEventListener('change', () => { updateModelUI(); render(); });
-  document.getElementById('currency').addEventListener('change', () => { updateCurrencyLabels(); render(); });
-
-  // Format money inputs when leaving the field
-  document.getElementById('listPrice').addEventListener('blur', () => { formatMoneyInputOnBlur('listPrice'); render(); });
-  document.getElementById('tcv').addEventListener('blur', () => { formatMoneyInputOnBlur('tcv'); render(); });
-
-  // init
-  loadFromUrl();
-  updateCurrencyLabels();
-  updateModelUI();
+  // ---------- Init ----------
+  loadState();
   render();
-
-  // extra UI sync after first paint (prevents rare “controls appear after refresh” issues)
-  requestAnimationFrame(() => { updateCurrencyLabels(); updateModelUI(); });
+})();
 </script>
 </body>
 </html>
